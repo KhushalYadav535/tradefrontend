@@ -1,17 +1,20 @@
 export default function manifest() {
   return {
-    name: 'Virtual Website',
-    short_name: 'Virtual',
-    description: 'Virtual Website Progressive Web App',
-    start_url: '/',
+    name: 'Virtual Trading',
+    short_name: 'Trading',
+    description: 'Virtual Trading Platform — Trade NIFTY, BANKNIFTY & more',
+    start_url: '/watchlist',
     display: 'standalone',
-    background_color: '#ffffff',
-    theme_color: '#000000',
+    orientation: 'portrait',
+    background_color: '#0b0e14',
+    theme_color: '#0b0e14',
+    categories: ['finance', 'trading'],
     icons: [
       {
         src: '/icon.svg',
         sizes: 'any',
         type: 'image/svg+xml',
+        purpose: 'any maskable',
       },
     ],
   };

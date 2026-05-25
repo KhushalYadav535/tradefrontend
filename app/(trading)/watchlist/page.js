@@ -57,73 +57,157 @@ function ScriptTable({ title, rows, onTrade, onRemove, segmentLabel }) {
         <div className="flex-1" />
       </div>
       {!collapsed && (
-        <div className="border border-border rounded-b overflow-x-auto">
-          <table className="qtable">
-            <thead>
-              <tr>
-                <th className="text-left">{title} SYM</th>
-                <th>BID RATE</th>
-                <th>ASK RATE</th>
-                <th>LTP</th>
-                <th>CHANGE %</th>
-                <th>NET CHANGE</th>
-                <th>HIGH</th>
-                <th>LOW</th>
-                <th>OPEN</th>
-                <th>CLOSE</th>
-                <th>REMOVE</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
-                <tr><td colSpan={11} className="py-8 text-muted">No scripts in this segment. Use the filters above and click + to add.</td></tr>
-              ) : rows.map((r) => {
-                const s = r.script;
-                const tradable = r.tradable;
-                const up = (s?.net_change || 0) >= 0;
-                const optSuffix = r.optionType && r.strike ? ` ${r.strike} ${r.optionType}` : '';
-                const onRowClick = () => tradable && !s?.is_banned && onTrade(s, 'BUY');
-                return (
-                  <tr key={r.key} className={tradable ? 'cursor-pointer' : ''} onClick={onRowClick}>
-                    <td className="sym">
-                      <div className="flex items-center gap-1.5">
-                        <span>{r.name}</span>
-                        <span className="text-muted text-[11px]">{r.expiry}{optSuffix}</span>
-                        {!tradable && <span className="badge-warn ml-1">QUOTE</span>}
-                        {s?.is_banned && <span className="badge-bad ml-1">BAN</span>}
+        <div className="border border-border rounded-b bg-surface overflow-hidden">
+          
+          {/* Mobile Layout (Cards) */}
+          <div className="flex flex-col md:hidden divide-y divide-border/50">
+            {rows.length === 0 ? (
+              <div className="p-6 text-center text-sm text-muted">No scripts in this segment. Use the filters above and click + to add.</div>
+            ) : rows.map((r) => {
+              const s = r.script;
+              const tradable = !!(s && r.tradable);
+              const up = (s?.net_change || 0) >= 0;
+              const optSuffix = r.optionType && r.strike ? ` ${r.strike} ${r.optionType}` : '';
+              
+              return (
+                <div key={r.key} className="p-3.5 flex flex-col gap-3 hover:bg-surface2/30 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 flex flex-col">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-fg tracking-tight">{r.name}</span>
+                        <span className="text-muted text-[11px] font-medium px-1.5 py-0.5 rounded bg-surface2">{r.expiry}{optSuffix}</span>
+                        {!tradable && <span className="badge-warn text-[9px] px-1">QUOTE</span>}
+                        {s?.is_banned && <span className="badge-bad text-[9px] px-1">BAN</span>}
                       </div>
-                    </td>
-                    {s ? (
-                      <>
-                        <td className="cell-bid" onClick={(e) => { e.stopPropagation(); tradable && !s.is_banned && onTrade(s, 'SELL'); }} title={tradable ? 'Click to SELL' : 'Quote only'}>{fmt(s.bid)}</td>
-                        <td className="cell-ask" onClick={(e) => { e.stopPropagation(); tradable && !s.is_banned && onTrade(s, 'BUY'); }} title={tradable ? 'Click to BUY' : 'Quote only'}>{fmt(s.ask)}</td>
-                        <td className="cell-ltp">{fmt(s.ltp)}</td>
-                        <td className={`price ${up ? 'text-accent' : 'text-red'}`}>{up ? '+' : ''}{fmt(s.change_pct)}%</td>
-                        <td className={`price ${up ? 'text-accent' : 'text-red'}`}>
-                          {up ? '▲' : '▼'} {fmt(Math.abs(s.net_change || 0))}
-                        </td>
-                        <td className="price">{fmt(s.high)}</td>
-                        <td className="price">{fmt(s.low)}</td>
-                        <td className="price">{fmt(s.open)}</td>
-                        <td className="price">{fmt(s.close)}</td>
-                      </>
-                    ) : (
-                      <>
-                        <td colSpan={9} className="text-muted text-xs italic">Live quote not available — added as placeholder</td>
-                      </>
-                    )}
-                    <td>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onRemove(r.key); }}
-                        className="w-6 h-6 inline-flex items-center justify-center bg-red/80 text-white text-xs rounded hover:bg-red"
-                        title="Remove from watchlist"
-                      >×</button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </div>
+                    <div className="text-right shrink-0">
+                      {s ? (
+                        <>
+                          <div className={`price font-bold text-lg leading-none ${up ? 'text-accent' : 'text-red'}`}>
+                            {fmt(s.ltp)}
+                          </div>
+                          <div className="flex items-center justify-end gap-1.5 mt-1 text-[11px] font-medium text-muted">
+                            <span className={up ? 'text-accent' : 'text-red'}>
+                              {up ? '▲' : '▼'} {fmt(Math.abs(s.net_change || 0))}
+                            </span>
+                            <span className={up ? 'text-accent' : 'text-red'}>
+                              ({up ? '+' : ''}{fmt(s.change_pct)}%)
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-muted text-xs italic">N/A</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {s && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <button 
+                        onClick={() => tradable && !s.is_banned && onTrade(s, 'SELL')}
+                        className="flex-1 cell-bid rounded-md py-2.5 flex flex-col items-center justify-center active:scale-[0.98] transition-transform"
+                      >
+                        <span className="text-[10px] font-bold tracking-widest opacity-80 mb-0.5">BID / SELL</span>
+                        <span className="font-bold text-sm">{fmt(s.bid)}</span>
+                      </button>
+                      <button 
+                        onClick={() => tradable && !s.is_banned && onTrade(s, 'BUY')}
+                        className="flex-1 cell-ask rounded-md py-2.5 flex flex-col items-center justify-center active:scale-[0.98] transition-transform"
+                      >
+                        <span className="text-[10px] font-bold tracking-widest opacity-80 mb-0.5">ASK / BUY</span>
+                        <span className="font-bold text-sm">{fmt(s.ask)}</span>
+                      </button>
+                      <button 
+                        onClick={() => onRemove(r.key)}
+                        className="w-11 h-full shrink-0 flex items-center justify-center bg-red/10 text-red rounded-md active:bg-red/20 transition-colors"
+                        title="Remove"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                  {!s && (
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-xs text-muted italic">Live quote not available</span>
+                      <button onClick={() => onRemove(r.key)} className="text-red text-xs font-bold px-2 py-1 bg-red/10 rounded">REMOVE</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop Layout (Table) */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="qtable">
+              <thead>
+                <tr>
+                  <th className="text-left">{title} SYM</th>
+                  <th>BID RATE</th>
+                  <th>ASK RATE</th>
+                  <th>LTP</th>
+                  <th>CHANGE %</th>
+                  <th>NET CHANGE</th>
+                  <th>HIGH</th>
+                  <th>LOW</th>
+                  <th>OPEN</th>
+                  <th>CLOSE</th>
+                  <th>REMOVE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.length === 0 ? (
+                  <tr><td colSpan={11} className="py-8 text-muted text-center">No scripts in this segment. Use the filters above and click + to add.</td></tr>
+                ) : rows.map((r) => {
+                  const s = r.script;
+                  const tradable = r.tradable;
+                  const up = (s?.net_change || 0) >= 0;
+                  const optSuffix = r.optionType && r.strike ? ` ${r.strike} ${r.optionType}` : '';
+                  const onRowClick = () => tradable && !s?.is_banned && onTrade(s, 'BUY');
+                  return (
+                    <tr key={r.key} className={tradable ? 'cursor-pointer' : ''} onClick={onRowClick}>
+                      <td className="sym">
+                        <div className="flex items-center gap-1.5">
+                          <span>{r.name}</span>
+                          <span className="text-muted text-[11px]">{r.expiry}{optSuffix}</span>
+                          {!tradable && <span className="badge-warn ml-1">QUOTE</span>}
+                          {s?.is_banned && <span className="badge-bad ml-1">BAN</span>}
+                        </div>
+                      </td>
+                      {s ? (
+                        <>
+                          <td className="cell-bid" onClick={(e) => { e.stopPropagation(); tradable && !s.is_banned && onTrade(s, 'SELL'); }} title={tradable ? 'Click to SELL' : 'Quote only'}>{fmt(s.bid)}</td>
+                          <td className="cell-ask" onClick={(e) => { e.stopPropagation(); tradable && !s.is_banned && onTrade(s, 'BUY'); }} title={tradable ? 'Click to BUY' : 'Quote only'}>{fmt(s.ask)}</td>
+                          <td className="cell-ltp">{fmt(s.ltp)}</td>
+                          <td className={`price ${up ? 'text-accent' : 'text-red'}`}>{up ? '+' : ''}{fmt(s.change_pct)}%</td>
+                          <td className={`price ${up ? 'text-accent' : 'text-red'}`}>
+                            {up ? '▲' : '▼'} {fmt(Math.abs(s.net_change || 0))}
+                          </td>
+                          <td className="price">{fmt(s.high)}</td>
+                          <td className="price">{fmt(s.low)}</td>
+                          <td className="price">{fmt(s.open)}</td>
+                          <td className="price">{fmt(s.close)}</td>
+                        </>
+                      ) : (
+                        <>
+                          <td colSpan={9} className="text-muted text-xs italic text-center">Live quote not available — added as placeholder</td>
+                        </>
+                      )}
+                      <td className="text-center">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onRemove(r.key); }}
+                          className="w-6 h-6 inline-flex items-center justify-center bg-red/10 text-red text-lg font-bold rounded hover:bg-red/20 transition-colors"
+                          title="Remove from watchlist"
+                        >×</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
@@ -237,24 +321,28 @@ export default function WatchlistPage() {
     <div>
       {/* Filter bar */}
       <div className="bg-surface border border-border rounded p-3 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-7 gap-3 items-end">
-          <Field label="SEGMENT">
-            <Combobox
-              value={segment}
-              onChange={setSegment}
-              options={SEGMENTS}
-            />
-          </Field>
+        <div className="grid grid-cols-2 md:grid-cols-7 gap-3 items-end">
+          <div className="col-span-2 md:col-span-1">
+            <Field label="SEGMENT">
+              <Combobox
+                value={segment}
+                onChange={setSegment}
+                options={SEGMENTS}
+              />
+            </Field>
+          </div>
 
-          <Field label="SCRIPT">
-            <Combobox
-              value={scriptName}
-              onChange={setScriptName}
-              options={scriptOptions}
-              placeholder="Pick a script"
-              disabled={scriptOptions.length === 0}
-            />
-          </Field>
+          <div className="col-span-2 md:col-span-1">
+            <Field label="SCRIPT">
+              <Combobox
+                value={scriptName}
+                onChange={setScriptName}
+                options={scriptOptions}
+                placeholder="Pick a script"
+                disabled={scriptOptions.length === 0}
+              />
+            </Field>
+          </div>
 
           <Field label="EXPIRY">
             <Combobox
@@ -289,11 +377,11 @@ export default function WatchlistPage() {
 
           <button
             onClick={onAdd}
-            className="bg-accent hover:bg-accent/90 text-white rounded h-[38px] flex items-center justify-center font-bold text-xl"
+            className="bg-accent hover:bg-accent/90 text-white rounded h-[38px] flex items-center justify-center font-bold text-xl active:scale-95 transition-transform"
             title="Add to watchlist"
           >+</button>
 
-          <div className="relative">
+          <div className="relative col-span-2 md:col-span-1 mt-2 md:mt-0">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
