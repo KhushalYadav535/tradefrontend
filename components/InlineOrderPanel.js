@@ -93,16 +93,16 @@ export default function InlineOrderPanel({ script, side: initialSide, onClose, o
   return (
     <>
       {/* Click-away backdrop */}
-      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div className="fixed inset-0 z-[60]" onClick={onClose} />
 
       <div
-        className="fixed left-0 right-0 bottom-0 z-50 border-t-2 shadow-2xl text-white"
+        className="fixed left-0 right-0 bottom-0 z-[70] border-t-2 shadow-2xl text-white"
         style={{
           background: panelBg,
           borderTopColor: isSell ? '#ef4444' : '#22c55e',
         }}
       >
-        <div className="px-4 py-3">
+        <div className="px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           {/* Top row: stat cells */}
           <div className="flex items-stretch gap-2 overflow-x-auto pb-2">
             <div className="px-4 py-3 rounded-md bg-black/40 border-2 border-black/40 min-w-[180px] flex items-center">
