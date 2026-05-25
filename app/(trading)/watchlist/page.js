@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import usePrices from '@/hooks/usePrices';
 import OrderModal from '@/components/OrderModal';
 import InlineOrderPanel from '@/components/InlineOrderPanel';
@@ -9,6 +9,7 @@ import Combobox from '@/components/Combobox';
 import { useToast } from '@/components/Toast';
 import { SCRIPT_CATALOG, EXPIRY_CATALOG, strikesFor } from '@/lib/catalog';
 import useOptionChain, { NSE_OPT_SYMBOLS } from '@/hooks/useOptionChain';
+import api from '@/lib/axios';
 
 const SEGMENTS = [
   { value: 'NSEFUT', label: 'NSEFUT', exchange: 'NSE' },
@@ -22,6 +23,19 @@ const SEGMENTS = [
 ];
 
 const STORAGE_KEY = 'avadh15_watchlist_v2';
+
+// Map DB row → local item shape
+function dbRowToItem(r) {
+  return {
+    id: r.id,
+    key: watchKey(r.segment, r.name, r.expiry, r.option_type, r.strike),
+    segment: r.segment,
+    name: r.name,
+    expiry: r.expiry || '',
+    optionType: r.option_type || '',
+    strike: r.strike || '',
+  };
+}
 
 function fmt(n, d = 2) {
   return Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -230,18 +244,25 @@ export default function WatchlistPage() {
   const [optionType, setOptionType] = useState('');
   const [strike, setStrike] = useState('');
 
-  // Persistent watchlist of items added by user.
-  // Use a ref-flag so the save-on-change effect doesn't fire before load.
+  // Persistent watchlist — synced to backend, localStorage as local cache.
   const [watchItems, setWatchItems] = useState([]);
-  const hasLoaded = useRef(false);
+  const [watchLoading, setWatchLoading] = useState(true);
+
+  // Load from API on mount
   useEffect(() => {
-    setWatchItems(loadWatch());
-    hasLoaded.current = true;
+    api.get('/watchlist')
+      .then(({ data }) => {
+        const items = data.items.map(dbRowToItem);
+        setWatchItems(items);
+        // Also cache locally for fast reload
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch {}
+      })
+      .catch(() => {
+        // Fallback to localStorage if API fails
+        try { setWatchItems(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')); } catch {}
+      })
+      .finally(() => setWatchLoading(false));
   }, []);
-  useEffect(() => {
-    if (!hasLoaded.current) return;
-    saveWatch(watchItems);
-  }, [watchItems]);
 
   // Reset selections when segment changes
   const scriptOptions = useMemo(() => SCRIPT_CATALOG[segment] || [], [segment]);
@@ -268,17 +289,15 @@ export default function WatchlistPage() {
     }
   }, [liveExpiries.join('|')]); // eslint-disable-line
 
-  const onAdd = () => {
+  const onAdd = async () => {
     if (!scriptName) {
       toast.error('Select a script first');
       return;
     }
-    // For option segments, require CE/PE + strike
     if (segmentDef?.isOption && (!optionType || !strike)) {
       toast.error('Pick CE/PE and a strike for options');
       return;
     }
-    // Non-option segments ignore CE/PE + strike to avoid stale fields polluting the key
     const otype = segmentDef?.isOption ? optionType : '';
     const stk = segmentDef?.isOption ? strike : '';
     const key = watchKey(segment, scriptName, expiry, otype, stk);
@@ -286,17 +305,33 @@ export default function WatchlistPage() {
       toast.info(`${scriptName} already in watchlist`);
       return;
     }
-    const next = [
-      ...watchItems,
-      { key, segment, name: scriptName, expiry, optionType: otype, strike: stk },
-    ];
-    setWatchItems(next);
-    const suffix = otype && stk ? ` ${stk} ${otype}` : '';
-    toast.success(`Added ${scriptName}${suffix} to watchlist`);
+    try {
+      const { data } = await api.post('/watchlist', {
+        segment,
+        name: scriptName,
+        expiry,
+        option_type: otype || null,
+        strike: stk || null,
+      });
+      const newItem = data.item ? dbRowToItem(data.item) : { key, segment, name: scriptName, expiry, optionType: otype, strike: stk };
+      const next = [...watchItems, newItem];
+      setWatchItems(next);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+      const suffix = otype && stk ? ` ${stk} ${otype}` : '';
+      toast.success(`Added ${scriptName}${suffix} to watchlist`);
+    } catch {
+      toast.error('Failed to add to watchlist');
+    }
   };
 
-  const onRemove = (key) => {
-    setWatchItems((w) => w.filter((x) => x.key !== key));
+  const onRemove = async (key) => {
+    const item = watchItems.find((x) => x.key === key);
+    if (item?.id) {
+      try { await api.delete(`/watchlist/${item.id}`); } catch {}
+    }
+    const next = watchItems.filter((x) => x.key !== key);
+    setWatchItems(next);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
     toast.info('Removed from watchlist');
   };
 
@@ -402,7 +437,11 @@ export default function WatchlistPage() {
               <span>{scriptName} spot: <span className="price text-fg">{Number(optionChain.data.underlying).toLocaleString('en-IN')}</span></span>
             ) : null}
             <span>{watchItems.length} script{watchItems.length > 1 ? 's' : ''} in watchlist</span>
-            <button onClick={() => setWatchItems([])} className="hover:text-red underline">Clear all</button>
+            <button onClick={async () => {
+              try { await api.delete('/watchlist/clear'); } catch {}
+              setWatchItems([]);
+              try { localStorage.removeItem(STORAGE_KEY); } catch {}
+            }} className="hover:text-red underline">Clear all</button>
           </div>
         )}
       </div>
@@ -410,8 +449,8 @@ export default function WatchlistPage() {
       {error && (
         <div className="card p-4 text-red mb-4">{error}</div>
       )}
-      {loading && scripts.length === 0 && watchItems.length === 0 ? (
-        <div className="text-muted text-sm">Loading scripts…</div>
+      {(loading && scripts.length === 0 && watchItems.length === 0) || watchLoading ? (
+        <div className="text-muted text-sm">Loading…</div>
       ) : (
         <>
           <ScriptTable
