@@ -126,14 +126,14 @@ html, body {
 }
 
 /* PWA specific */
-@supports (padding: max(0px)) {
+@supports (padding: env(safe-area-inset-bottom)) {
   .pb-safe {
-    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
-@supports not (padding: max(0px)) {
+@supports not (padding: env(safe-area-inset-bottom)) {
   .pb-safe {
-    padding-bottom: 1rem;
+    padding-bottom: 0;
   }
 }
 

@@ -37,7 +37,7 @@ export default function MobileTabBar({ onOpenMenu }) {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-surface/95 backdrop-blur-md border-t border-border flex items-center justify-around z-50 md:hidden pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border flex items-center justify-around z-50 md:hidden pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
       {tabs.map((t) => {
         const active = pathname === t.href;
         return (

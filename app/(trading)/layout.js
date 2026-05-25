@@ -36,10 +36,10 @@ export default function TradingLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg md:pb-0 pb-16">
+    <div className="h-[100dvh] flex flex-col bg-bg overflow-hidden">
       <Header onToggleSidebar={() => isMobile ? setSidebarOpen(!sidebarOpen) : setCollapsed(!collapsed)} />
       <Disclaimer />
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden relative">
         {/* Mobile overlay */}
         {isMobile && sidebarOpen && (
           <div 
@@ -48,18 +48,18 @@ export default function TradingLayout({ children }) {
           />
         )}
         <div className={`
-          fixed md:relative md:flex
-          h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] overflow-y-auto
+          absolute md:relative md:flex
+          h-full overflow-y-auto
           z-50 md:z-auto bg-surface shadow-2xl md:shadow-none
           transition-all duration-300 ease-in-out
           ${isMobile 
-            ? `w-64 top-16 left-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}` 
+            ? `w-64 top-0 left-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}` 
             : `${collapsed ? 'w-14' : 'w-60'} translate-x-0`
           }
         `}>
           <Sidebar collapsed={!isMobile && collapsed} />
         </div>
-        <main className="flex-1 overflow-auto p-3 md:p-4 w-full">
+        <main className="flex-1 overflow-y-auto p-3 md:p-4 w-full pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-4">
           {children}
         </main>
       </div>
