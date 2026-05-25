@@ -8,6 +8,7 @@ import EmptyState from '@/components/EmptyState';
 import Combobox from '@/components/Combobox';
 import { useToast } from '@/components/Toast';
 import { SCRIPT_CATALOG, EXPIRY_CATALOG, strikesFor } from '@/lib/catalog';
+import useOptionChain, { NSE_OPT_SYMBOLS } from '@/hooks/useOptionChain';
 
 const SEGMENTS = [
   { value: 'NSEFUT', label: 'NSEFUT', exchange: 'NSE' },
@@ -167,7 +168,21 @@ export default function WatchlistPage() {
   }, [segment]); // eslint-disable-line
 
   // Strikes adapt to selected script
-  const strikeOptions = useMemo(() => strikesFor(scriptName), [scriptName]);
+  const optionChain = useOptionChain(segmentDef?.isOption ? scriptName : null);
+  const liveStrikes = optionChain.data?.rowsByExpiry?.[expiry]?.map((r) => String(r.strike)) || [];
+  const fallbackStrikes = strikesFor(scriptName);
+  const strikeOptions = (segmentDef?.isOption && liveStrikes.length) ? liveStrikes : fallbackStrikes;
+
+  // Live expiries from option chain when available
+  const liveExpiries = optionChain.data?.expiries || [];
+  const expiryOptions = (segmentDef?.isOption && liveExpiries.length) ? liveExpiries : EXPIRY_CATALOG;
+
+  // If user picked an expiry that isn't in the live list, snap to first
+  useEffect(() => {
+    if (segmentDef?.isOption && liveExpiries.length && !liveExpiries.includes(expiry)) {
+      setExpiry(liveExpiries[0]);
+    }
+  }, [liveExpiries.join('|')]); // eslint-disable-line
 
   const onAdd = () => {
     if (!scriptName) {
@@ -245,7 +260,7 @@ export default function WatchlistPage() {
             <Combobox
               value={expiry}
               onChange={setExpiry}
-              options={EXPIRY_CATALOG}
+              options={expiryOptions}
             />
           </Field>
 
@@ -295,6 +310,9 @@ export default function WatchlistPage() {
 
         {watchItems.length > 0 && (
           <div className="mt-2 flex justify-end gap-3 text-xs text-muted">
+            {optionChain.data?.underlying ? (
+              <span>{scriptName} spot: <span className="price text-fg">{Number(optionChain.data.underlying).toLocaleString('en-IN')}</span></span>
+            ) : null}
             <span>{watchItems.length} script{watchItems.length > 1 ? 's' : ''} in watchlist</span>
             <button onClick={() => setWatchItems([])} className="hover:text-red underline">Clear all</button>
           </div>

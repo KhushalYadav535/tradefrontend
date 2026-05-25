@@ -24,6 +24,19 @@ const jetbrains = JetBrains_Mono({
 export const metadata = {
   title: 'AVADH15 — Virtual Trading',
   description: "India's biggest virtual exchange",
+
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'AVADH15',
+  },
+};
+
+export const viewport = {
+  themeColor: '#000000',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 // Inline script runs before paint to avoid theme flash on reload
