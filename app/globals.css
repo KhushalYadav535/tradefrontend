@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  background: #000;
+  color: #e6e9ef;
+  font-family: 'Exo 2', system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+* { box-sizing: border-box; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+
+@layer components {
+  .card {
+    @apply bg-surface border border-border rounded-lg;
+  }
+  .input {
+    @apply w-full bg-surface2 border border-border rounded px-3 py-1.5 text-sm text-white
+           focus:border-brand focus:ring-0 focus:outline-none placeholder:text-muted;
+  }
+  .select {
+    @apply w-full bg-[#1c1f26] border border-border rounded px-3 py-2 text-sm text-white
+           focus:border-brand focus:ring-0 focus:outline-none appearance-none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%237a8294' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded font-semibold
+           text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary { @apply btn bg-brand text-white hover:bg-brand/90; }
+  .btn-buy    { @apply btn bg-accent text-black hover:bg-accent/90; }
+  .btn-sell   { @apply btn bg-red text-white hover:bg-red/90; }
+  .btn-ghost  { @apply btn bg-transparent border border-border text-white hover:bg-surface2; }
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide;
+  }
+  .badge-buy  { @apply badge bg-accent/15 text-accent; }
+  .badge-sell { @apply badge bg-red/15 text-red; }
+  .badge-ok   { @apply badge bg-accent/15 text-accent; }
+  .badge-warn { @apply badge bg-yellow-500/15 text-yellow-400; }
+  .badge-bad  { @apply badge bg-red/15 text-red; }
+  .table-wrap { @apply card overflow-hidden; }
+  .table { @apply w-full text-sm; }
+  .table thead th {
+    @apply text-left text-xs uppercase tracking-wider text-muted font-semibold
+           px-4 py-3 bg-surface2/50 border-b border-border;
+  }
+  .table tbody td { @apply px-4 py-3 border-b border-border/60; }
+  .table tbody tr:hover { @apply bg-surface2/40; }
+
+  .qtable { @apply w-full text-[13px] border-collapse; }
+  .qtable thead th {
+    @apply text-center text-[11px] uppercase tracking-wider text-muted font-semibold
+           px-3 py-2 bg-[#101218] border-b border-border whitespace-nowrap;
+  }
+  .qtable tbody td {
+    @apply px-3 py-2 border-b border-border/40 text-center whitespace-nowrap;
+  }
+  .qtable tbody td.sym { @apply text-left font-semibold; }
+  .qtable tbody tr:hover { @apply bg-[#0e1015]; }
+
+  .price { font-family: 'Share Tech Mono', monospace; }
+  .heading { font-family: 'Rajdhani', system-ui, sans-serif; letter-spacing: 0.02em; }
+}
+
+.cell-bid {
+  background: #5e1a23;
+  color: #fff;
+  font-family: 'Share Tech Mono', monospace;
+  cursor: pointer;
+}
+.cell-bid:hover { background: #7a1e2c; }
+
+.cell-ask {
+  background: #1d3b73;
+  color: #fff;
+  font-family: 'Share Tech Mono', monospace;
+  cursor: pointer;
+}
+.cell-ask:hover { background: #244a8f; }
+
+.cell-ltp {
+  background: #5e1a23;
+  color: #fff;
+  font-family: 'Share Tech Mono', monospace;
+  font-weight: 600;
+}
+
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.ticker-track {
+  animation: ticker-scroll 60s linear infinite;
+  width: max-content;
+}
