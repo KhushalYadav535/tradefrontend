@@ -44,7 +44,7 @@ export default function MaxQtyPage() {
                   <td className="price text-right">{s.lot_size}</td>
                   <td className="price text-right">{s.max_lots}</td>
                   <td className="price text-right text-accent">{Number(s.max_qty).toLocaleString('en-IN')}</td>
-                  <td className="price text-right text-yellow-400">₹{Number(s.margin_per_lot).toLocaleString('en-IN')}</td>
+                  <td className="price text-right text-warn">₹{Number(s.margin_per_lot).toLocaleString('en-IN')}</td>
                 </tr>
               ))}
             </tbody>

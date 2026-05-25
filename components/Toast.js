@@ -44,7 +44,7 @@ export function ToastProvider({ children }) {
             }`}>
               {t.type === 'success' ? 'Success' : t.type === 'error' ? 'Error' : 'Info'}
             </div>
-            <div className="text-white/90">{t.message}</div>
+            <div className="text-fg/90">{t.message}</div>
           </div>
         ))}
       </div>

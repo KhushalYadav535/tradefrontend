@@ -7,6 +7,7 @@ import { useNotifications } from '@/context/NotificationsContext';
 import IndexTickers from './IndexTickers';
 import ContactUplineModal from './ContactUplineModal';
 import NotificationsDropdown from './NotificationsDropdown';
+import ThemeToggle from './ThemeToggle';
 
 export default function Header({ onToggleSidebar }) {
   const { user, logout, refreshUser } = useAuth();
@@ -29,7 +30,6 @@ export default function Header({ onToggleSidebar }) {
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
 
-  // Close menus when clicking elsewhere
   useEffect(() => {
     const close = (e) => {
       if (!e.target.closest?.('[data-menu]')) {
@@ -69,23 +69,19 @@ export default function Header({ onToggleSidebar }) {
 
   return (
     <>
-      <header className="h-16 bg-black border-b border-border flex items-center px-3 gap-2">
+      <header className="h-16 bg-surface border-b border-border flex items-center px-3 gap-2">
         <div className="flex items-center gap-2 w-60 shrink-0">
-          <div
-            className="w-9 h-9 rounded-md flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}
-          >
+          <div className="w-9 h-9 rounded-md flex items-center justify-center bg-gradient-to-br from-brand to-brand-2">
             <span className="heading font-bold text-white text-lg">A</span>
           </div>
-          <div className="heading text-2xl font-bold tracking-wider"
-               style={{ background: 'linear-gradient(135deg,#a855f7,#7c3aed)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            AVADH11
+          <div className="heading text-2xl font-bold tracking-tight bg-gradient-to-br from-brand-2 to-brand bg-clip-text text-transparent">
+            AVADH15
           </div>
         </div>
 
         <button
           onClick={onToggleSidebar}
-          className="w-9 h-9 flex items-center justify-center rounded hover:bg-surface text-muted hover:text-white"
+          className="w-9 h-9 flex items-center justify-center rounded hover:bg-surface2 text-muted hover:text-fg"
           aria-label="Toggle sidebar"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -98,13 +94,13 @@ export default function Header({ onToggleSidebar }) {
         <div className="flex-1" />
 
         <div className="hidden lg:flex items-center gap-3 text-xs">
-          <div className="px-3 py-1.5 rounded bg-surface border border-border">
+          <div className="px-3 py-1.5 rounded bg-surface2 border border-border">
             <span className="text-[10px] uppercase text-muted mr-1">Bal</span>
             <span className="price text-accent">₹{fmt(user?.balance)}</span>
           </div>
-          <div className="px-3 py-1.5 rounded bg-surface border border-border">
+          <div className="px-3 py-1.5 rounded bg-surface2 border border-border">
             <span className="text-[10px] uppercase text-muted mr-1">Exp</span>
-            <span className="price text-yellow-400">₹{fmt(user?.exposure)}</span>
+            <span className="price text-warn">₹{fmt(user?.exposure)}</span>
           </div>
         </div>
 
@@ -117,11 +113,13 @@ export default function Header({ onToggleSidebar }) {
         </button>
 
         <div className="flex items-center gap-1 ml-2">
+          <ThemeToggle />
+
           {/* Bell */}
           <div className="relative" data-menu>
             <button
               onClick={onBellClick}
-              className="relative w-9 h-9 flex items-center justify-center rounded hover:bg-surface text-muted hover:text-white"
+              className="relative w-9 h-9 flex items-center justify-center rounded hover:bg-surface2 text-muted hover:text-fg"
               aria-label="Notifications"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -140,7 +138,7 @@ export default function Header({ onToggleSidebar }) {
           <div className="relative" data-menu>
             <button
               onClick={() => { setProfileOpen((v) => !v); setBellOpen(false); }}
-              className="w-9 h-9 flex items-center justify-center rounded hover:bg-surface text-muted hover:text-white"
+              className="w-9 h-9 flex items-center justify-center rounded hover:bg-surface2 text-muted hover:text-fg"
               aria-label="Profile"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -159,7 +157,7 @@ export default function Header({ onToggleSidebar }) {
                 </div>
                 <div className="px-3 py-2 text-xs flex justify-between">
                   <span className="text-muted">Exposure</span>
-                  <span className="price text-yellow-400">₹{fmt(user?.exposure)}</span>
+                  <span className="price text-warn">₹{fmt(user?.exposure)}</span>
                 </div>
                 <button onClick={onLogout} className="w-full mt-1 text-left px-3 py-2 text-sm text-red hover:bg-red/10 rounded">
                   Logout
@@ -171,7 +169,7 @@ export default function Header({ onToggleSidebar }) {
           {/* Fullscreen */}
           <button
             onClick={toggleFullscreen}
-            className="w-9 h-9 flex items-center justify-center rounded hover:bg-surface text-muted hover:text-white"
+            className="w-9 h-9 flex items-center justify-center rounded hover:bg-surface2 text-muted hover:text-fg"
             aria-label={isFs ? 'Exit fullscreen' : 'Enter fullscreen'}
             title={isFs ? 'Exit fullscreen' : 'Fullscreen'}
           >

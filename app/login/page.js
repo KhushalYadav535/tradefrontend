@@ -45,17 +45,11 @@ export default function LoginPage() {
       />
       <div className="card w-full max-w-md p-8 relative z-10 shadow-glow">
         <div className="text-center mb-8">
-          <div
-            className="inline-flex items-center justify-center w-14 h-14 rounded-xl mb-3"
-            style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}
-          >
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl mb-3 bg-gradient-to-br from-brand to-brand-2">
             <span className="heading font-bold text-2xl text-white">A</span>
           </div>
-          <h1
-            className="heading text-3xl font-bold tracking-wider"
-            style={{ background: 'linear-gradient(135deg,#a855f7,#7c3aed)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
-          >
-            AVADH11
+          <h1 className="heading text-3xl font-bold tracking-tight bg-gradient-to-br from-brand-2 to-brand bg-clip-text text-transparent">
+            AVADH15
           </h1>
           <p className="text-muted text-sm mt-1">India&apos;s Biggest Virtual Exchange</p>
         </div>
@@ -93,8 +87,8 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 pt-4 border-t border-border text-xs text-muted space-y-1">
-          <div className="flex justify-between"><span>Student:</span> <span className="text-white/80">demo / demo123</span></div>
-          <div className="flex justify-between"><span>Admin:</span> <span className="text-white/80">admin / admin123</span></div>
+          <div className="flex justify-between"><span>Student:</span> <span className="text-fg/80">demo / demo123</span></div>
+          <div className="flex justify-between"><span>Admin:</span> <span className="text-fg/80">admin / admin123</span></div>
         </div>
       </div>
     </div>

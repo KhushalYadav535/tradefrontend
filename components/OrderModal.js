@@ -55,9 +55,14 @@ export default function OrderModal({ script, side, onClose, onPlaced }) {
     }
   };
 
+  const segBtn = (active) =>
+    `text-xs py-1 rounded transition-colors ${
+      active ? 'bg-brand text-white font-semibold shadow-soft' : 'text-muted hover:text-fg'
+    }`;
+
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-fg/40 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
@@ -84,33 +89,17 @@ export default function OrderModal({ script, side, onClose, onPlaced }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] text-muted uppercase tracking-wider mb-1">Order Type</label>
-              <div className="grid grid-cols-3 gap-1 bg-bg border border-border rounded-md p-1">
+              <div className="grid grid-cols-3 gap-1 bg-surface2 border border-border rounded-md p-1">
                 {['MARKET', 'LIMIT', 'SL'].map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setOrderType(t)}
-                    className={`text-xs py-1 rounded transition-colors ${
-                      orderType === t ? 'bg-accent text-black font-semibold' : 'text-muted hover:text-white'
-                    }`}
-                  >
-                    {t}
-                  </button>
+                  <button key={t} onClick={() => setOrderType(t)} className={segBtn(orderType === t)}>{t}</button>
                 ))}
               </div>
             </div>
             <div>
               <label className="block text-[10px] text-muted uppercase tracking-wider mb-1">Product</label>
-              <div className="grid grid-cols-2 gap-1 bg-bg border border-border rounded-md p-1">
+              <div className="grid grid-cols-2 gap-1 bg-surface2 border border-border rounded-md p-1">
                 {['INTRADAY', 'DELIVERY'].map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setProductType(t)}
-                    className={`text-xs py-1 rounded transition-colors ${
-                      productType === t ? 'bg-accent text-black font-semibold' : 'text-muted hover:text-white'
-                    }`}
-                  >
-                    {t}
-                  </button>
+                  <button key={t} onClick={() => setProductType(t)} className={segBtn(productType === t)}>{t}</button>
                 ))}
               </div>
             </div>
@@ -127,7 +116,7 @@ export default function OrderModal({ script, side, onClose, onPlaced }) {
                 value={lots}
                 onChange={(e) => setLots(e.target.value)}
               />
-              <div className="text-[10px] text-muted mt-1">Qty: <span className="price text-white">{qty}</span></div>
+              <div className="text-[10px] text-muted mt-1">Qty: <span className="price text-fg">{qty}</span></div>
             </div>
             <div>
               <label className="block text-[10px] text-muted uppercase tracking-wider mb-1">Price</label>
@@ -145,14 +134,14 @@ export default function OrderModal({ script, side, onClose, onPlaced }) {
             </div>
           </div>
 
-          <div className="bg-bg border border-border rounded-md p-3 text-xs space-y-1.5">
+          <div className="bg-surface2 border border-border rounded-md p-3 text-xs space-y-1.5">
             <div className="flex justify-between">
               <span className="text-muted">Total Value</span>
               <span className="price">₹{total.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted">Margin Required</span>
-              <span className="price text-yellow-400">₹{margin.toLocaleString('en-IN')}</span>
+              <span className="price text-warn">₹{margin.toLocaleString('en-IN')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted">Lot Size</span>

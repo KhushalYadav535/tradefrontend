@@ -11,8 +11,8 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const t = localStorage.getItem('avadh11_token');
-    const u = localStorage.getItem('avadh11_user');
+    const t = localStorage.getItem('avadh15_token');
+    const u = localStorage.getItem('avadh15_user');
     if (t) setToken(t);
     if (u) {
       try { setUser(JSON.parse(u)); } catch {}
@@ -22,16 +22,16 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (username, password) => {
     const { data } = await api.post('/auth/login', { username, password });
-    localStorage.setItem('avadh11_token', data.token);
-    localStorage.setItem('avadh11_user', JSON.stringify(data.user));
+    localStorage.setItem('avadh15_token', data.token);
+    localStorage.setItem('avadh15_user', JSON.stringify(data.user));
     setToken(data.token);
     setUser(data.user);
     return data.user;
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('avadh11_token');
-    localStorage.removeItem('avadh11_user');
+    localStorage.removeItem('avadh15_token');
+    localStorage.removeItem('avadh15_user');
     setToken(null);
     setUser(null);
   }, []);
@@ -40,7 +40,7 @@ export function AuthProvider({ children }) {
     try {
       const { data } = await api.get('/users/me');
       setUser(data.user);
-      localStorage.setItem('avadh11_user', JSON.stringify(data.user));
+      localStorage.setItem('avadh15_user', JSON.stringify(data.user));
       return data.user;
     } catch {
       return null;

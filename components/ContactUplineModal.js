@@ -3,7 +3,7 @@
 export default function ContactUplineModal({ onClose }) {
   return (
     <div
-      className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[60] bg-fg/40 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
@@ -12,7 +12,7 @@ export default function ContactUplineModal({ onClose }) {
       >
         <div className="px-5 py-3 border-b border-border flex items-center justify-between bg-red/10">
           <h3 className="heading text-lg font-bold tracking-wider">CONTACT UPLINE</h3>
-          <button onClick={onClose} className="text-muted hover:text-white text-xl leading-none">×</button>
+          <button onClick={onClose} className="text-muted hover:text-fg text-xl leading-none">×</button>
         </div>
         <div className="p-5 space-y-3 text-sm">
           <p className="text-muted">Reach your broker for funds, queries, or account assistance.</p>
@@ -41,7 +41,7 @@ export default function ContactUplineModal({ onClose }) {
             </div>
           </a>
 
-          <a href="mailto:support@avadh11.example" className="flex items-center gap-3 px-3 py-2.5 rounded bg-bg border border-border hover:border-accent">
+          <a href="mailto:support@avadh15.example" className="flex items-center gap-3 px-3 py-2.5 rounded bg-bg border border-border hover:border-accent">
             <span className="text-brand-2">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
@@ -49,7 +49,7 @@ export default function ContactUplineModal({ onClose }) {
             </span>
             <div>
               <div className="text-[11px] uppercase tracking-wider text-muted">Email</div>
-              <div>support@avadh11.example</div>
+              <div>support@avadh15.example</div>
             </div>
           </a>
 

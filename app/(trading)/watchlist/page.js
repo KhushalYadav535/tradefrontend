@@ -1,106 +1,129 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import usePrices from '@/hooks/usePrices';
 import OrderModal from '@/components/OrderModal';
+import InlineOrderPanel from '@/components/InlineOrderPanel';
 import EmptyState from '@/components/EmptyState';
+import Combobox from '@/components/Combobox';
 import { useToast } from '@/components/Toast';
+import { SCRIPT_CATALOG, EXPIRY_CATALOG, strikesFor } from '@/lib/catalog';
 
 const SEGMENTS = [
-  { key: 'NSEFUT', label: 'NSEFUT', exchange: 'NSE' },
-  { key: 'MCXFUT', label: 'MCXFUT', exchange: 'MCX' },
-  { key: 'NSEOPT', label: 'NSEOPT', exchange: 'NSE', isOption: true },
-  { key: 'GLOBAL_FUT', label: 'GLOBAL FUTURES', exchange: 'GLOBAL' },
-  { key: 'MCXOPT', label: 'MCXOPT', exchange: 'MCX', isOption: true },
-  { key: 'NSECDS', label: 'NSECDS', exchange: 'FOREX' },
-  { key: 'NSEEQT', label: 'NSEEQT', exchange: 'NSE' },
-  { key: 'GLOBAL_STK', label: 'GLOBAL STOCKS', exchange: 'GLOBAL' },
+  { value: 'NSEFUT', label: 'NSEFUT', exchange: 'NSE' },
+  { value: 'MCXFUT', label: 'MCXFUT', exchange: 'MCX' },
+  { value: 'NSEOPT', label: 'NSEOPT', exchange: 'NSE', isOption: true },
+  { value: 'GLOBAL_FUT', label: 'GLOBAL FUTURES', exchange: 'GLOBAL' },
+  { value: 'MCXOPT', label: 'MCXOPT', exchange: 'MCX', isOption: true },
+  { value: 'NSECDS', label: 'NSECDS', exchange: 'FOREX' },
+  { value: 'NSEEQT', label: 'NSEEQT', exchange: 'NSE' },
+  { value: 'GLOBAL_STK', label: 'GLOBAL STOCKS', exchange: 'GLOBAL' },
 ];
 
-const STRIKES = ['ATM', '23000', '23500', '24000', '24500', '25000'];
+const STORAGE_KEY = 'avadh15_watchlist_v2';
 
 function fmt(n, d = 2) {
   return Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d });
 }
 
-function expiryFor(s) {
-  // Pretty expiry string used in the table SYM column
-  return s.expiry ? `26${s.expiry}26` : '';
+function watchKey(seg, name, expiry, optionType, strike) {
+  return [seg, name, expiry, optionType, strike].filter(Boolean).join('|');
 }
 
-function ScriptTable({ title, scripts, onTrade, onRemove, segmentLabel }) {
+function loadWatch() {
+  if (typeof window === 'undefined') return [];
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+}
+function saveWatch(items) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch {}
+}
+
+function ScriptTable({ title, rows, onTrade, onRemove, segmentLabel }) {
   const [collapsed, setCollapsed] = useState(false);
   return (
     <div className="mb-6">
       <div className={`flex items-center bg-surface border border-border ${collapsed ? 'rounded' : 'border-b-0 rounded-t'}`}>
         <button
           onClick={() => setCollapsed((v) => !v)}
-          className="w-10 h-10 flex items-center justify-center text-muted hover:text-white"
+          className="w-10 h-10 flex items-center justify-center text-muted hover:text-fg"
           title={collapsed ? 'Expand' : 'Collapse'}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className={`transition-transform ${collapsed ? '-rotate-90' : ''}`}>
             <polygon points="6,9 18,9 12,16" />
           </svg>
         </button>
-        <span className="text-xs text-muted font-semibold tracking-wider">{segmentLabel} · {scripts.length}</span>
+        <span className="text-xs text-muted font-semibold tracking-wider">{segmentLabel} · {rows.length}</span>
         <div className="flex-1" />
       </div>
-      {collapsed ? null : (
-      <div className="border border-border rounded-b overflow-x-auto">
-        <table className="qtable">
-          <thead>
-            <tr>
-              <th className="text-left">{title} SYM</th>
-              <th>BID RATE</th>
-              <th>ASK RATE</th>
-              <th>LTP</th>
-              <th>CHANGE %</th>
-              <th>NET CHANGE</th>
-              <th>HIGH</th>
-              <th>LOW</th>
-              <th>OPEN</th>
-              <th>CLOSE</th>
-              <th>REMOVE</th>
-            </tr>
-          </thead>
-          <tbody>
-            {scripts.length === 0 ? (
-              <tr><td colSpan={11} className="py-8 text-muted">No scripts in this segment. Use the filters above and click + to add.</td></tr>
-            ) : scripts.map((s) => {
-              const up = (s.net_change || 0) >= 0;
-              return (
-                <tr key={s.id}>
-                  <td className="sym">
-                    <div className="flex items-center gap-1.5">
-                      <span>{s.name}</span>
-                      <span className="text-muted text-[11px]">{expiryFor(s)}</span>
-                      {s.is_banned && <span className="badge-bad ml-1">BAN</span>}
-                    </div>
-                  </td>
-                  <td className="cell-bid" onClick={() => !s.is_banned && onTrade(s, 'SELL')} title="Click to SELL">{fmt(s.bid)}</td>
-                  <td className="cell-ask" onClick={() => !s.is_banned && onTrade(s, 'BUY')} title="Click to BUY">{fmt(s.ask)}</td>
-                  <td className="cell-ltp">{fmt(s.ltp)}</td>
-                  <td className={`price ${up ? 'text-accent' : 'text-red'}`}>{up ? '+' : ''}{fmt(s.change_pct)}%</td>
-                  <td className={`price ${up ? 'text-accent' : 'text-red'}`}>
-                    {up ? '▲' : '▼'} {fmt(Math.abs(s.net_change || 0))}
-                  </td>
-                  <td className="price">{fmt(s.high)}</td>
-                  <td className="price">{fmt(s.low)}</td>
-                  <td className="price">{fmt(s.open)}</td>
-                  <td className="price">{fmt(s.close)}</td>
-                  <td>
-                    <button
-                      onClick={() => onRemove(s.id)}
-                      className="w-6 h-6 inline-flex items-center justify-center bg-red/80 text-white text-xs rounded hover:bg-red"
-                      title="Remove from watchlist"
-                    >×</button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {!collapsed && (
+        <div className="border border-border rounded-b overflow-x-auto">
+          <table className="qtable">
+            <thead>
+              <tr>
+                <th className="text-left">{title} SYM</th>
+                <th>BID RATE</th>
+                <th>ASK RATE</th>
+                <th>LTP</th>
+                <th>CHANGE %</th>
+                <th>NET CHANGE</th>
+                <th>HIGH</th>
+                <th>LOW</th>
+                <th>OPEN</th>
+                <th>CLOSE</th>
+                <th>REMOVE</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr><td colSpan={11} className="py-8 text-muted">No scripts in this segment. Use the filters above and click + to add.</td></tr>
+              ) : rows.map((r) => {
+                const s = r.script;
+                const tradable = r.tradable;
+                const up = (s?.net_change || 0) >= 0;
+                const optSuffix = r.optionType && r.strike ? ` ${r.strike} ${r.optionType}` : '';
+                const onRowClick = () => tradable && !s?.is_banned && onTrade(s, 'BUY');
+                return (
+                  <tr key={r.key} className={tradable ? 'cursor-pointer' : ''} onClick={onRowClick}>
+                    <td className="sym">
+                      <div className="flex items-center gap-1.5">
+                        <span>{r.name}</span>
+                        <span className="text-muted text-[11px]">{r.expiry}{optSuffix}</span>
+                        {!tradable && <span className="badge-warn ml-1">QUOTE</span>}
+                        {s?.is_banned && <span className="badge-bad ml-1">BAN</span>}
+                      </div>
+                    </td>
+                    {s ? (
+                      <>
+                        <td className="cell-bid" onClick={(e) => { e.stopPropagation(); tradable && !s.is_banned && onTrade(s, 'SELL'); }} title={tradable ? 'Click to SELL' : 'Quote only'}>{fmt(s.bid)}</td>
+                        <td className="cell-ask" onClick={(e) => { e.stopPropagation(); tradable && !s.is_banned && onTrade(s, 'BUY'); }} title={tradable ? 'Click to BUY' : 'Quote only'}>{fmt(s.ask)}</td>
+                        <td className="cell-ltp">{fmt(s.ltp)}</td>
+                        <td className={`price ${up ? 'text-accent' : 'text-red'}`}>{up ? '+' : ''}{fmt(s.change_pct)}%</td>
+                        <td className={`price ${up ? 'text-accent' : 'text-red'}`}>
+                          {up ? '▲' : '▼'} {fmt(Math.abs(s.net_change || 0))}
+                        </td>
+                        <td className="price">{fmt(s.high)}</td>
+                        <td className="price">{fmt(s.low)}</td>
+                        <td className="price">{fmt(s.open)}</td>
+                        <td className="price">{fmt(s.close)}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td colSpan={9} className="text-muted text-xs italic">Live quote not available — added as placeholder</td>
+                      </>
+                    )}
+                    <td>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onRemove(r.key); }}
+                        className="w-6 h-6 inline-flex items-center justify-center bg-red/80 text-white text-xs rounded hover:bg-red"
+                        title="Remove from watchlist"
+                      >×</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
@@ -110,99 +133,90 @@ export default function WatchlistPage() {
   const { scripts, loading, error } = usePrices(2000);
   const toast = useToast();
 
-  const [segment, setSegment] = useState('NSEFUT');
-  const [search, setSearch] = useState('');
+  const [segment, setSegment] = useState('NSEOPT');
   const [orderFor, setOrderFor] = useState(null);
-  const [hidden, setHidden] = useState(new Set());
+  const [search, setSearch] = useState('');
 
-  // Filter-bar state (used to drive the + button)
+  const segmentDef = SEGMENTS.find((s) => s.value === segment);
+
+  // Filter-bar selections (drive the + button)
   const [scriptName, setScriptName] = useState('');
-  const [expiry, setExpiry] = useState('');
+  const [expiry, setExpiry] = useState(EXPIRY_CATALOG[0]);
   const [optionType, setOptionType] = useState('');
   const [strike, setStrike] = useState('');
 
-  const segmentDef = SEGMENTS.find((s) => s.key === segment);
-
-  // Scripts available for the SCRIPT dropdown given the segment
-  const segmentScripts = useMemo(() => {
-    if (!segmentDef) return scripts;
-    if (segmentDef.exchange === 'GLOBAL') return [];
-    return scripts.filter((s) => s.exchange === segmentDef.exchange);
-  }, [scripts, segmentDef]);
-
-  const expiriesForScript = useMemo(() => {
-    const set = new Set();
-    segmentScripts
-      .filter((s) => (scriptName ? s.name === scriptName : true))
-      .forEach((s) => s.expiry && set.add(s.expiry));
-    return Array.from(set);
-  }, [segmentScripts, scriptName]);
-
-  // Reset/auto-select when segment changes
+  // Persistent watchlist of items added by user.
+  // Use a ref-flag so the save-on-change effect doesn't fire before load.
+  const [watchItems, setWatchItems] = useState([]);
+  const hasLoaded = useRef(false);
   useEffect(() => {
-    setScriptName(segmentScripts[0]?.name || '');
-    setExpiry(segmentScripts[0]?.expiry || '');
+    setWatchItems(loadWatch());
+    hasLoaded.current = true;
+  }, []);
+  useEffect(() => {
+    if (!hasLoaded.current) return;
+    saveWatch(watchItems);
+  }, [watchItems]);
+
+  // Reset selections when segment changes
+  const scriptOptions = useMemo(() => SCRIPT_CATALOG[segment] || [], [segment]);
+  useEffect(() => {
+    setScriptName(scriptOptions[0] || '');
     setOptionType('');
     setStrike('');
   }, [segment]); // eslint-disable-line
 
-  // When script changes, sync expiry to first valid one for that script
-  useEffect(() => {
-    if (expiriesForScript.length && !expiriesForScript.includes(expiry)) {
-      setExpiry(expiriesForScript[0]);
-    }
-  }, [scriptName, expiriesForScript]); // eslint-disable-line
-
-  const visibleScripts = useMemo(() => {
-    return segmentScripts
-      .filter((s) => !hidden.has(s.id))
-      .filter((s) => (search ? s.name.toLowerCase().includes(search.toLowerCase()) : true));
-  }, [segmentScripts, search, hidden]);
-
-  const secondaryScripts = useMemo(() => {
-    if (!scripts.length) return [];
-    if (segmentDef?.exchange === 'MCX') return [];
-    return scripts
-      .filter((s) => !hidden.has(s.id) && s.exchange === 'MCX')
-      .filter((s) => (search ? s.name.toLowerCase().includes(search.toLowerCase()) : true));
-  }, [scripts, segmentDef, hidden, search]);
-
-  const onRemove = (id) => {
-    setHidden((h) => new Set([...h, id]));
-    toast.info('Removed from watchlist');
-  };
+  // Strikes adapt to selected script
+  const strikeOptions = useMemo(() => strikesFor(scriptName), [scriptName]);
 
   const onAdd = () => {
     if (!scriptName) {
-      toast.error('Pick a script first');
+      toast.error('Select a script first');
       return;
     }
-    const candidate = segmentScripts.find(
-      (s) => s.name === scriptName && (!expiry || s.expiry === expiry)
-    );
-    if (!candidate) {
-      toast.error('Script/expiry not found in this segment');
+    // For option segments, require CE/PE + strike
+    if (segmentDef?.isOption && (!optionType || !strike)) {
+      toast.error('Pick CE/PE and a strike for options');
       return;
     }
-    if (!hidden.has(candidate.id)) {
-      toast.info(`${candidate.name} is already in your watchlist`);
+    // Non-option segments ignore CE/PE + strike to avoid stale fields polluting the key
+    const otype = segmentDef?.isOption ? optionType : '';
+    const stk = segmentDef?.isOption ? strike : '';
+    const key = watchKey(segment, scriptName, expiry, otype, stk);
+    if (watchItems.some((w) => w.key === key)) {
+      toast.info(`${scriptName} already in watchlist`);
       return;
     }
-    setHidden((h) => {
-      const next = new Set(h);
-      next.delete(candidate.id);
-      return next;
-    });
-    const suffix = segmentDef?.isOption && optionType && strike
-      ? ` ${strike} ${optionType}`
-      : '';
-    toast.success(`Added ${candidate.name}${suffix} to watchlist`);
+    const next = [
+      ...watchItems,
+      { key, segment, name: scriptName, expiry, optionType: otype, strike: stk },
+    ];
+    setWatchItems(next);
+    const suffix = otype && stk ? ` ${stk} ${otype}` : '';
+    toast.success(`Added ${scriptName}${suffix} to watchlist`);
   };
 
-  const restoreAll = () => {
-    setHidden(new Set());
-    toast.info('Restored all scripts');
+  const onRemove = (key) => {
+    setWatchItems((w) => w.filter((x) => x.key !== key));
+    toast.info('Removed from watchlist');
   };
+
+  // Resolve each watch item to live API data when available
+  const rows = useMemo(() => {
+    return watchItems
+      .filter((w) => (search ? w.name.toLowerCase().includes(search.toLowerCase()) : true))
+      .map((w) => {
+        const live = scripts.find((s) => s.name === w.name);
+        return {
+          ...w,
+          script: live || null,
+          tradable: !!live,
+        };
+      });
+  }, [watchItems, scripts, search]);
+
+  const segmentRows = rows.filter((r) => r.segment === segment);
+  const otherRows = rows.filter((r) => r.segment !== segment);
 
   return (
     <div>
@@ -210,55 +224,57 @@ export default function WatchlistPage() {
       <div className="bg-surface border border-border rounded p-3 mb-4">
         <div className="grid grid-cols-1 md:grid-cols-7 gap-3 items-end">
           <Field label="SEGMENT">
-            <select className="select" value={segment} onChange={(e) => setSegment(e.target.value)}>
-              {SEGMENTS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-            </select>
+            <Combobox
+              value={segment}
+              onChange={setSegment}
+              options={SEGMENTS}
+            />
           </Field>
 
           <Field label="SCRIPT">
-            <select className="select" value={scriptName} onChange={(e) => setScriptName(e.target.value)} disabled={segmentScripts.length === 0}>
-              {segmentScripts.length === 0
-                ? <option>—</option>
-                : Array.from(new Set(segmentScripts.map((s) => s.name))).map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
+            <Combobox
+              value={scriptName}
+              onChange={setScriptName}
+              options={scriptOptions}
+              placeholder="Pick a script"
+              disabled={scriptOptions.length === 0}
+            />
           </Field>
 
           <Field label="EXPIRY">
-            <select className="select" value={expiry} onChange={(e) => setExpiry(e.target.value)} disabled={!expiriesForScript.length}>
-              {expiriesForScript.length === 0
-                ? <option>—</option>
-                : expiriesForScript.map((ex) => <option key={ex} value={ex}>26-{ex}-2026</option>)}
-            </select>
+            <Combobox
+              value={expiry}
+              onChange={setExpiry}
+              options={EXPIRY_CATALOG}
+            />
           </Field>
 
           <Field label="CE/PE">
-            <select
-              className="select disabled:opacity-50"
+            <Combobox
               value={optionType}
-              onChange={(e) => setOptionType(e.target.value)}
-              disabled={!segmentDef?.isOption}
-            >
-              <option value="">—</option>
-              <option value="CE">CE</option>
-              <option value="PE">PE</option>
-            </select>
+              onChange={setOptionType}
+              options={[
+                { value: '', label: '—' },
+                { value: 'CE', label: 'CE' },
+                { value: 'PE', label: 'PE' },
+              ]}
+              searchable={false}
+              placeholder="—"
+            />
           </Field>
 
           <Field label="STRIKE">
-            <select
-              className="select disabled:opacity-50"
+            <Combobox
               value={strike}
-              onChange={(e) => setStrike(e.target.value)}
-              disabled={!segmentDef?.isOption}
-            >
-              <option value="">Select...</option>
-              {STRIKES.map((k) => <option key={k} value={k}>{k}</option>)}
-            </select>
+              onChange={setStrike}
+              options={strikeOptions}
+              placeholder="Select..."
+            />
           </Field>
 
           <button
             onClick={onAdd}
-            className="bg-accent hover:bg-accent/90 text-black rounded h-[38px] flex items-center justify-center font-bold text-xl"
+            className="bg-accent hover:bg-accent/90 text-white rounded h-[38px] flex items-center justify-center font-bold text-xl"
             title="Add to watchlist"
           >+</button>
 
@@ -272,16 +288,15 @@ export default function WatchlistPage() {
               placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="input pl-8 h-[38px] bg-[#1c1f26]"
+              className="input pl-8 h-[38px]"
             />
           </div>
         </div>
 
-        {hidden.size > 0 && (
-          <div className="mt-2 flex justify-end">
-            <button onClick={restoreAll} className="text-xs text-muted hover:text-white underline">
-              Restore {hidden.size} hidden script{hidden.size > 1 ? 's' : ''}
-            </button>
+        {watchItems.length > 0 && (
+          <div className="mt-2 flex justify-end gap-3 text-xs text-muted">
+            <span>{watchItems.length} script{watchItems.length > 1 ? 's' : ''} in watchlist</span>
+            <button onClick={() => setWatchItems([])} className="hover:text-red underline">Clear all</button>
           </div>
         )}
       </div>
@@ -289,34 +304,38 @@ export default function WatchlistPage() {
       {error && (
         <div className="card p-4 text-red mb-4">{error}</div>
       )}
-      {loading && scripts.length === 0 ? (
+      {loading && scripts.length === 0 && watchItems.length === 0 ? (
         <div className="text-muted text-sm">Loading scripts…</div>
       ) : (
         <>
           <ScriptTable
             title={segmentDef?.label || 'WATCH'}
             segmentLabel={segmentDef?.label || ''}
-            scripts={visibleScripts}
+            rows={segmentRows}
             onTrade={(s, side) => setOrderFor({ script: s, side })}
             onRemove={onRemove}
           />
-          {secondaryScripts.length > 0 && (
+          {otherRows.length > 0 && (
             <ScriptTable
-              title="MCXFUT"
-              segmentLabel="MCXFUT"
-              scripts={secondaryScripts}
+              title="OTHER"
+              segmentLabel="Other Segments"
+              rows={otherRows}
               onTrade={(s, side) => setOrderFor({ script: s, side })}
               onRemove={onRemove}
             />
           )}
-          {visibleScripts.length === 0 && secondaryScripts.length === 0 && (
-            <EmptyState title="No scripts visible" subtitle="Try a different segment, clear the search, or restore hidden scripts" />
+          {watchItems.length === 0 && (
+            <EmptyState
+              icon="+"
+              title="Your watchlist is empty"
+              subtitle="Pick a SEGMENT and SCRIPT above, then click + to add."
+            />
           )}
         </>
       )}
 
       {orderFor && (
-        <OrderModal
+        <InlineOrderPanel
           script={orderFor.script}
           side={orderFor.side}
           onClose={() => setOrderFor(null)}

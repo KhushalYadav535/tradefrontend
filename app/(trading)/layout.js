@@ -25,7 +25,7 @@ export default function TradingLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-black">
+    <div className="min-h-screen flex flex-col bg-bg">
       <Header onToggleSidebar={() => setCollapsed((v) => !v)} />
       <Disclaimer />
       <div className="flex flex-1 min-h-0">

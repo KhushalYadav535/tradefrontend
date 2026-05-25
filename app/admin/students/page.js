@@ -107,7 +107,7 @@ export default function StudentsPage() {
                   <td className="font-semibold price">{s.username}</td>
                   <td>{s.full_name || '—'}</td>
                   <td className="price text-right text-accent">₹{fmt(s.balance)}</td>
-                  <td className="price text-right text-yellow-400">₹{fmt(s.exposure)}</td>
+                  <td className="price text-right text-warn">₹{fmt(s.exposure)}</td>
                   <td className="price text-right">{s.trade_count}</td>
                   <td>
                     <span className={s.is_active ? 'badge-ok' : 'badge-bad'}>
@@ -187,7 +187,7 @@ function CreateStudentModal({ onClose, onCreated }) {
     return (
       <Modal onClose={() => { onCreated(); }} title="Student Created" accent="brand">
         <div className="space-y-4">
-          <div className="rounded bg-bg border border-accent/40 p-4">
+          <div className="rounded bg-surface2 border border-accent/40 p-4">
             <div className="text-[10px] uppercase tracking-wider text-muted mb-2">Share these credentials with the student</div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <Row label="User ID" value={created.username} />
@@ -283,11 +283,11 @@ function EditStudentModal({ student, onClose, onSaved }) {
 
 function Modal({ title, children, onClose }) {
   return (
-    <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] bg-fg/40 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
       <div className="card w-full max-w-md shadow-glow" onClick={(e) => e.stopPropagation()}>
         <div className="px-5 py-3 border-b border-border flex items-center justify-between bg-brand/10">
           <h3 className="heading text-lg font-bold tracking-wide">{title}</h3>
-          <button onClick={onClose} className="text-muted hover:text-white text-xl leading-none">×</button>
+          <button onClick={onClose} className="text-muted hover:text-fg text-xl leading-none">×</button>
         </div>
         <div className="p-5">{children}</div>
       </div>

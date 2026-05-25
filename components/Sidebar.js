@@ -54,7 +54,6 @@ export default function Sidebar({ collapsed }) {
   const router = useRouter();
   const { logout } = useAuth();
 
-  // expanded section based on current path
   const initial = SECTIONS.find((s) => s.items.some((i) => i.href === pathname))?.key || 'trading';
   const [open, setOpen] = useState(initial);
 
@@ -65,13 +64,13 @@ export default function Sidebar({ collapsed }) {
 
   if (collapsed) {
     return (
-      <aside className="w-14 shrink-0 bg-black border-r border-border flex flex-col">
+      <aside className="w-14 shrink-0 bg-surface border-r border-border flex flex-col">
         <nav className="flex-1 py-3 px-2 space-y-1">
           {SECTIONS.map((s) => (
             <Link
               key={s.key}
               href={s.items[0].href}
-              className="flex items-center justify-center w-10 h-10 rounded hover:bg-surface text-muted hover:text-white"
+              className="flex items-center justify-center w-10 h-10 rounded hover:bg-surface2 text-muted hover:text-fg"
               title={s.title}
             >
               {s.icon}
@@ -88,7 +87,7 @@ export default function Sidebar({ collapsed }) {
   }
 
   return (
-    <aside className="w-60 shrink-0 bg-black border-r border-border flex flex-col">
+    <aside className="w-60 shrink-0 bg-surface border-r border-border flex flex-col">
       <nav className="flex-1 p-3 overflow-y-auto">
         {SECTIONS.map((s) => {
           const isOpen = open === s.key;
@@ -98,7 +97,7 @@ export default function Sidebar({ collapsed }) {
               <button
                 onClick={() => setOpen(isOpen ? null : s.key)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-colors ${
-                  hasActive ? 'text-white bg-surface' : 'text-white/90 hover:bg-surface'
+                  hasActive ? 'text-fg bg-surface2' : 'text-fg/90 hover:bg-surface2'
                 }`}
               >
                 <span className={hasActive ? 'text-accent' : 'text-muted'}>{s.icon}</span>
@@ -117,7 +116,7 @@ export default function Sidebar({ collapsed }) {
                         <Link
                           href={item.href}
                           className={`flex items-center gap-2 px-3 py-2 rounded text-[13px] transition-colors ${
-                            active ? 'text-accent bg-accent/10' : 'text-white/70 hover:bg-surface hover:text-white'
+                            active ? 'text-accent bg-accent/10' : 'text-fg/70 hover:bg-surface2 hover:text-fg'
                           }`}
                         >
                           <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-accent' : 'bg-muted'}`} />

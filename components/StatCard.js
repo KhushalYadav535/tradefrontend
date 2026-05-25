@@ -4,8 +4,8 @@ export default function StatCard({ label, value, accent }) {
   const cls =
     accent === 'green' ? 'text-accent'
     : accent === 'red' ? 'text-red'
-    : accent === 'yellow' ? 'text-yellow-400'
-    : 'text-white';
+    : accent === 'yellow' ? 'text-warn'
+    : 'text-fg';
   return (
     <div className="card p-4">
       <div className="text-[10px] uppercase tracking-wider text-muted">{label}</div>

@@ -1,32 +1,58 @@
 import './globals.css';
+import { Inter, Space_Grotesk, JetBrains_Mono } from 'next/font/google';
 import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/components/Toast';
 import { NotificationsProvider } from '@/context/NotificationsContext';
+import { ThemeProvider } from '@/context/ThemeContext';
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-body',
+});
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-heading',
+});
+const jetbrains = JetBrains_Mono({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-mono',
+});
 
 export const metadata = {
-  title: 'AVADH11 — Virtual Trading',
+  title: 'AVADH15 — Virtual Trading',
   description: "India's biggest virtual exchange",
 };
 
+// Inline script runs before paint to avoid theme flash on reload
+const themeScript = `
+try {
+  var s = localStorage.getItem('avadh15_theme');
+  var dark = s ? s === 'dark' : !window.matchMedia('(prefers-color-scheme: light)').matches;
+  document.documentElement.classList.add(dark ? 'dark' : 'light');
+} catch (e) {
+  document.documentElement.classList.add('dark');
+}
+`;
+
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrains.variable}`}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap"
-          rel="stylesheet"
-        />
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="bg-bg text-white font-body">
-        <AuthProvider>
-          <NotificationsProvider>
-            <ToastProvider>
-              {children}
-            </ToastProvider>
-          </NotificationsProvider>
-        </AuthProvider>
+      <body className="bg-bg text-fg">
+        <ThemeProvider>
+          <AuthProvider>
+            <NotificationsProvider>
+              <ToastProvider>
+                {children}
+              </ToastProvider>
+            </NotificationsProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
