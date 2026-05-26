@@ -95,6 +95,7 @@ export default function StudentsPage() {
                 <th className="text-right">Balance</th>
                 <th className="text-right">Exposure</th>
                 <th className="text-right">Trades</th>
+                <th>Role</th>
                 <th>Status</th>
                 <th>Created</th>
                 <th className="text-right">Actions</th>
@@ -109,6 +110,7 @@ export default function StudentsPage() {
                   <td className="price text-right text-accent">₹{fmt(s.balance)}</td>
                   <td className="price text-right text-warn">₹{fmt(s.exposure)}</td>
                   <td className="price text-right">{s.trade_count}</td>
+                  <td className="text-xs uppercase text-muted tracking-wider font-semibold">{s.role}</td>
                   <td>
                     <span className={s.is_active ? 'badge-ok' : 'badge-bad'}>
                       {s.is_active ? 'Active' : 'Disabled'}
@@ -241,6 +243,7 @@ function EditStudentModal({ student, onClose, onSaved }) {
   const toast = useToast();
   const [fullName, setFullName] = useState(student.full_name || '');
   const [balance, setBalance] = useState(student.balance);
+  const [role, setRole] = useState(student.role || 'user');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -248,7 +251,7 @@ function EditStudentModal({ student, onClose, onSaved }) {
     e.preventDefault();
     setBusy(true);
     try {
-      const body = { full_name: fullName, balance: Number(balance) };
+      const body = { full_name: fullName, balance: Number(balance), role };
       if (password) body.password = password;
       await api.patch(`/admin/students/${student.id}`, body);
       toast.success(`Updated ${student.username}`);
@@ -268,6 +271,12 @@ function EditStudentModal({ student, onClose, onSaved }) {
         </Field>
         <Field label="Balance (₹)" hint={`Current: ₹${Number(student.balance).toLocaleString('en-IN')} · changes are recorded in ledger`}>
           <input className="input price" type="number" step="0.01" value={balance} onChange={(e) => setBalance(e.target.value)} />
+        </Field>
+        <Field label="Account Role" hint="Admin has full access to the entire platform.">
+          <select className="input" value={role} onChange={(e) => setRole(e.target.value)}>
+            <option value="user">User (Student/Trader)</option>
+            <option value="admin">Administrator</option>
+          </select>
         </Field>
         <Field label="Reset Password" hint="Leave blank to keep the existing password">
           <input className="input" placeholder="New password (optional)" value={password} onChange={(e) => setPassword(e.target.value)} />
