@@ -35,13 +35,42 @@ export default function usePrices(intervalMs = 2000) {
     }
   };
 
+  const resumeInterval = () => {
+    if (!mounted.current) return;
+    // Fetch fresh data immediately when coming back into focus
+    fetchOnce();
+    // Resume the regular interval
+    timer.current = setInterval(fetchOnce, intervalMs);
+  };
+
+  const pauseInterval = () => {
+    if (timer.current) {
+      clearInterval(timer.current);
+    }
+  };
+
   useEffect(() => {
     mounted.current = true;
     fetchOnce();
     timer.current = setInterval(fetchOnce, intervalMs);
+
+    // Handle visibility changes (when browser tab becomes visible/hidden)
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Page is hidden - pause interval to save resources
+        pauseInterval();
+      } else {
+        // Page is visible again - resume and fetch fresh data
+        resumeInterval();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       mounted.current = false;
       clearInterval(timer.current);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [intervalMs]);
 
