@@ -12,6 +12,7 @@ export default function StudentsPage() {
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [editStudent, setEditStudent] = useState(null);
+  const [forensicsStudent, setForensicsStudent] = useState(null);
   const toast = useToast();
 
   const load = async () => {
@@ -119,6 +120,7 @@ export default function StudentsPage() {
                   <td className="text-xs text-muted">{new Date(s.created_at).toLocaleDateString()}</td>
                   <td className="text-right space-x-1">
                     <button onClick={() => setEditStudent(s)} className="btn-ghost text-xs py-1 px-2">Edit</button>
+                    <button onClick={() => setForensicsStudent(s)} className="btn-ghost text-xs py-1 px-2 text-brand border border-brand/30 hover:bg-brand/10">Forensics</button>
                     <button onClick={() => onToggleActive(s)} className="btn-ghost text-xs py-1 px-2">
                       {s.is_active ? 'Disable' : 'Enable'}
                     </button>
@@ -144,6 +146,12 @@ export default function StudentsPage() {
           student={editStudent}
           onClose={() => setEditStudent(null)}
           onSaved={() => { setEditStudent(null); load(); }}
+        />
+      )}
+      {forensicsStudent && (
+        <ForensicsModal 
+          student={forensicsStudent} 
+          onClose={() => setForensicsStudent(null)} 
         />
       )}
     </div>
@@ -320,5 +328,78 @@ function Row({ label, value }) {
       <div className="text-[10px] uppercase tracking-wider text-muted">{label}</div>
       <div className="price font-semibold">{value}</div>
     </div>
+  );
+}
+
+function ForensicsModal({ student, onClose }) {
+  const [loading, setLoading] = useState(true);
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    api.get(`/admin/forensics/${student.id}`)
+      .then(res => {
+        setReport(res.data);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.response?.data?.error || 'Failed to load report');
+        setLoading(false);
+      });
+  }, [student.id]);
+
+  return (
+    <Modal onClose={onClose} title={`Forensic Report: ${student.username}`} accent="brand">
+      {loading ? (
+        <div className="text-muted text-sm p-4">Analyzing {student.username}'s behavior and portfolio integrity...</div>
+      ) : error ? (
+        <div className="text-red p-4">{error}</div>
+      ) : (
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+          <div className="rounded bg-surface2 border border-border p-4">
+            <h4 className="font-bold mb-2 text-sm">Behavioral Analysis</h4>
+            <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
+               <Row label="Trades Analyzed" value={report.behavior_analysis.analyzed} />
+               <Row label="Risk Score" value={<span className={report.behavior_analysis.riskScore > 0 ? 'text-red font-bold' : 'text-emerald-500 font-bold'}>{report.behavior_analysis.riskScore}</span>} />
+            </div>
+            {report.behavior_analysis.anomalies.length === 0 ? (
+              <div className="text-xs text-emerald-500 font-semibold">✓ No suspicious behavioral patterns detected.</div>
+            ) : (
+              <ul className="text-xs text-red list-disc pl-4 space-y-1">
+                {report.behavior_analysis.anomalies.map((a, i) => <li key={i}>{a}</li>)}
+              </ul>
+            )}
+          </div>
+
+          <div className="rounded bg-surface2 border border-border p-4">
+            <h4 className="font-bold mb-2 text-sm">Portfolio Integrity Check (Replay)</h4>
+            <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
+               <Row label="Starting Balance" value={`₹${Number(report.portfolio_integrity.startingBalance).toLocaleString('en-IN')}`} />
+               <Row label="Integrity Status" value={<span className={report.portfolio_integrity.isClean ? 'text-emerald-500 font-bold' : 'text-red font-bold'}>{report.portfolio_integrity.isClean ? 'CLEAN' : 'TAMPERED'}</span>} />
+               <Row label="Calculated Final" value={`₹${Number(report.portfolio_integrity.calculatedFinalBalance).toLocaleString('en-IN')}`} />
+               <Row label="Actual Stored" value={`₹${Number(report.portfolio_integrity.storedFinalBalance).toLocaleString('en-IN')}`} />
+            </div>
+            {!report.portfolio_integrity.isClean && (
+               <div className="mt-2 pt-2 border-t border-border">
+                 <div className="text-xs font-bold text-red mb-1">Discrepancies Found:</div>
+                 <div className="space-y-2">
+                   {report.portfolio_integrity.discrepancies.map((d, i) => (
+                     <div key={i} className="text-[10px] bg-red/10 p-2 rounded">
+                       <div><span className="text-muted">Time:</span> {new Date(d.time).toLocaleString()}</div>
+                       <div><span className="text-muted">Desc:</span> {d.description}</div>
+                       <div className="text-red">Expected: {d.expected} vs Actual: {d.actual}</div>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+            )}
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button onClick={onClose} className="btn-primary">Close Report</button>
+          </div>
+        </div>
+      )}
+    </Modal>
   );
 }

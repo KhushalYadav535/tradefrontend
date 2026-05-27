@@ -41,6 +41,8 @@ export default function OrderModal({ script, side, onClose, onPlaced }) {
         price: orderType === 'MARKET' ? Number(script.current_price) : Number(price),
         order_type: orderType,
         product_type: productType,
+        nonce: crypto.randomUUID(),
+        timestamp: Date.now(),
       });
       toast.success(
         `${tradeSide} ${data.trade.lots} lot${data.trade.lots > 1 ? 's' : ''} of ${data.trade.script} @ ${data.trade.price}`

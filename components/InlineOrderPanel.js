@@ -71,6 +71,8 @@ export default function InlineOrderPanel({ script, side: initialSide, onClose, o
         price: orderType === 'MARKET' ? refPrice : Number(price),
         order_type: orderType,
         product_type: 'INTRADAY',
+        nonce: crypto.randomUUID(),
+        timestamp: Date.now(),
       });
       toast.success(
         `${side} ${data.trade.lots} lot${data.trade.lots > 1 ? 's' : ''} of ${data.trade.script} @ ${data.trade.price}`
