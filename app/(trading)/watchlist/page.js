@@ -1,15 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import usePrices from '@/hooks/usePrices';
-import OrderModal from '@/components/OrderModal';
 import InlineOrderPanel from '@/components/InlineOrderPanel';
 import EmptyState from '@/components/EmptyState';
 import Combobox from '@/components/Combobox';
 import { useToast } from '@/components/Toast';
-import { SCRIPT_CATALOG, EXPIRY_CATALOG, strikesFor } from '@/lib/catalog';
-import useOptionChain, { NSE_OPT_SYMBOLS } from '@/hooks/useOptionChain';
+import { SCRIPT_CATALOG, EXPIRY_CATALOG } from '@/lib/catalog';
+import useOptionChain from '@/hooks/useOptionChain';
 import api from '@/lib/axios';
+import VedpragyaSearch from '@/components/VedpragyaSearch';
+import useVedpragyaStream from '@/hooks/useVedpragyaStream';
 
 const SEGMENTS = [
   { value: 'NSEFUT', label: 'NSEFUT', exchange: 'NSE' },
@@ -100,7 +101,16 @@ function ScriptTable({ title, rows, onTrade, onRemove, segmentLabel }) {
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted shrink-0">
                       <span>Q : <span className="text-fg font-semibold">0</span></span>
-                      {s && <span>LTP : <span className="price font-bold text-fg">{fmt(s.ltp)}</span></span>}
+                      {s && (
+                        <span className="flex items-center gap-1">
+                          LTP : <span className="price font-bold text-fg">{fmt(s.ltp)}</span>
+                          {s.source && (
+                            <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${s.source === 'vedpragya' ? 'bg-green-500/15 text-green-400' : s.source === 'yahoo' ? 'bg-blue-500/15 text-blue-400' : s.source === 'nse' ? 'bg-orange-500/15 text-orange-400' : 'bg-surface2 text-muted'}`}>
+                            {s.source === 'vedpragya' ? 'VP' : s.source === 'yahoo' ? 'YH' : s.source === 'nse' ? 'NSE' : 'SIM'}
+                          </span>
+                          )}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -191,7 +201,16 @@ function ScriptTable({ title, rows, onTrade, onRemove, segmentLabel }) {
                         <>
                           <td className="cell-bid" onClick={(e) => { e.stopPropagation(); tradable && !s.is_banned && onTrade(s, 'SELL'); }} title={tradable ? 'Click to SELL' : 'Quote only'}>{fmt(s.bid)}</td>
                           <td className="cell-ask" onClick={(e) => { e.stopPropagation(); tradable && !s.is_banned && onTrade(s, 'BUY'); }} title={tradable ? 'Click to BUY' : 'Quote only'}>{fmt(s.ask)}</td>
-                          <td className="cell-ltp">{fmt(s.ltp)}</td>
+                          <td className="cell-ltp">
+                            <span className="flex items-center justify-end gap-1.5">
+                              {fmt(s.ltp)}
+                              {s.source && (
+                                <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${s.source === 'vedpragya' ? 'bg-green-500/15 text-green-400' : s.source === 'yahoo' ? 'bg-blue-500/15 text-blue-400' : s.source === 'nse' ? 'bg-orange-500/15 text-orange-400' : 'bg-surface2 text-muted'}`}>
+                                  {s.source === 'vedpragya' ? 'VP' : s.source === 'yahoo' ? 'YH' : s.source === 'nse' ? 'NSE' : 'SIM'}
+                                </span>
+                              )}
+                            </span>
+                          </td>
                           <td className={`price ${up ? 'text-accent' : 'text-red'}`}>{up ? '+' : ''}{fmt(s.change_pct)}%</td>
                           <td className={`price ${up ? 'text-accent' : 'text-red'}`}>
                             {up ? '▲' : '▼'} {fmt(Math.abs(s.net_change || 0))}
@@ -226,7 +245,7 @@ function ScriptTable({ title, rows, onTrade, onRemove, segmentLabel }) {
 }
 
 export default function WatchlistPage() {
-  const { scripts, loading, error } = usePrices(2000);
+  const { scripts, loading, error } = usePrices(3000);
   const toast = useToast();
 
   const [segment, setSegment] = useState('NSEOPT');
@@ -239,7 +258,7 @@ export default function WatchlistPage() {
   const [scriptName, setScriptName] = useState('');
   const [expiry, setExpiry] = useState(EXPIRY_CATALOG[0]);
   const [optionType, setOptionType] = useState('');
-  const [strike, setStrike] = useState('');
+
 
   // Persistent watchlist — synced to backend, localStorage as local cache.
   const [watchItems, setWatchItems] = useState([]);
@@ -266,18 +285,14 @@ export default function WatchlistPage() {
   useEffect(() => {
     setScriptName(scriptOptions[0] || '');
     setOptionType('');
-    setStrike('');
   }, [segment]); // eslint-disable-line
 
-  // Strikes adapt to selected script
-  const optionChain = useOptionChain(segmentDef?.isOption ? scriptName : null);
-  const liveStrikes = optionChain.data?.rowsByExpiry?.[expiry]?.map((r) => String(r.strike)) || [];
-  const fallbackStrikes = strikesFor(scriptName);
-  const strikeOptions = (segmentDef?.isOption && liveStrikes.length) ? liveStrikes : fallbackStrikes;
 
-  // Live expiries from option chain when available
+  // Live expiries from option chain when available (strike data not used)
+  const optionChain = useOptionChain(segmentDef?.isOption ? scriptName : null);
   const liveExpiries = optionChain.data?.expiries || [];
   const expiryOptions = (segmentDef?.isOption && liveExpiries.length) ? liveExpiries : EXPIRY_CATALOG;
+
 
   // If user picked an expiry that isn't in the live list, snap to first
   useEffect(() => {
@@ -286,17 +301,52 @@ export default function WatchlistPage() {
     }
   }, [liveExpiries.join('|')]); // eslint-disable-line
 
+  // Add from Vedpragya search result
+  const onVpSelect = async (result) => {
+    const sym = result.symbol || result.name || '';
+    if (!sym) return;
+    // Pick segment based on instrumentType + exchange
+    let seg = 'NSEEQT';
+    if (result.exchange === 'NFO' || result.segment === 'NFO') seg = result.instrumentType === 'FUT' ? 'NSEFUT' : 'NSEOPT';
+    else if (result.exchange === 'MCX' || result.segment?.includes('MCX')) seg = 'MCXFUT';
+    else if (result.assetClass === 'currency') seg = 'NSECDS';
+
+    const key = watchKey(seg, sym, result.expiry || '', result.optionType || '', result.strike || '');
+    if (watchItems.some((w) => w.key === key)) {
+      toast.info(`${sym} already in watchlist`);
+      return;
+    }
+    try {
+      const { data } = await api.post('/watchlist', {
+        segment: seg,
+        name: sym,
+        expiry: result.expiry || null,
+        option_type: result.optionType || null,
+        strike: result.strike || null,
+      });
+      const newItem = data.item
+        ? dbRowToItem(data.item)
+        : { key, segment: seg, name: sym, expiry: result.expiry || '', optionType: result.optionType || '', strike: result.strike || '' };
+      const next = [...watchItems, newItem];
+      setWatchItems(next);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+      toast.success(`Added ${sym} to watchlist`);
+    } catch {
+      toast.error('Failed to add to watchlist');
+    }
+  };
+
   const onAdd = async () => {
     if (!scriptName) {
       toast.error('Select a script first');
       return;
     }
-    if (segmentDef?.isOption && (!optionType || !strike)) {
-      toast.error('Pick CE/PE and a strike for options');
+    if (segmentDef?.isOption && !optionType) {
+      toast.error('Pick CE or PE for options');
       return;
     }
     const otype = segmentDef?.isOption ? optionType : '';
-    const stk = segmentDef?.isOption ? strike : '';
+    const stk = '';
     const key = watchKey(segment, scriptName, expiry, otype, stk);
     if (watchItems.some((w) => w.key === key)) {
       toast.info(`${scriptName} already in watchlist`);
@@ -332,25 +382,110 @@ export default function WatchlistPage() {
     toast.info('Removed from watchlist');
   };
 
-  // Resolve each watch item to live API data when available
+  // Segment → exchange map (mirrors SEGMENTS constant defined at top of file)
+  const SEGMENT_EXCHANGE = useMemo(() => {
+    const m = {};
+    for (const seg of SEGMENTS) m[seg.value] = seg.exchange || '';
+    return m;
+  }, []);
+
+  // Collect unique "SYMBOL:EXCHANGE" tokens → feed to Vedpragya stream
+  // Sending the exchange lets the backend pick the correct MCX/NSE UIR ID.
+  const watchSymbols = useMemo(() => {
+    const seen = new Set();
+    return watchItems
+      .map((w) => {
+        const ex = SEGMENT_EXCHANGE[w.segment] || '';
+        return ex ? `${w.name}:${ex}` : w.name;
+      })
+      .filter((tok) => { if (seen.has(tok)) return false; seen.add(tok); return true; });
+  }, [watchItems, SEGMENT_EXCHANGE]);
+
+  // Real-time Socket.IO stream from Vedpragya
+  const { ticks: vpTicks, status: vpStatus } = useVedpragyaStream(watchSymbols);
+
+  // Resolve each watch item: base from REST scripts, override LTP from live tick
   const rows = useMemo(() => {
     return watchItems
       .filter((w) => (search ? w.name.toLowerCase().includes(search.toLowerCase()) : true))
       .map((w) => {
-        const live = scripts.find((s) => s.name === w.name);
+        const live  = scripts.find((s) => s.name === w.name) || null;
+        const tick  = vpTicks[w.name] || null;
+
+        // Merge: tick overrides LTP/change/bid/ask from REST base
+        const script = live
+          ? {
+              ...live,
+              ltp       : tick?.ltp      ?? live.ltp,
+              bid       : tick?.bid      ?? live.bid,
+              ask       : tick?.ask      ?? live.ask,
+              net_change: tick?.change   ?? live.net_change,
+              change_pct: tick?.pchange  ?? live.change_pct,
+              high      : tick?.ohlc?.h  ?? live.high,
+              low       : tick?.ohlc?.l  ?? live.low,
+              open      : tick?.ohlc?.o  ?? live.open,
+              volume    : tick?.volume   ?? live.volume,
+              source    : tick ? 'vedpragya' : live.source,
+            }
+          : tick
+          ? {
+              // We have a live tick but no REST entry — construct a minimal script
+              name       : w.name,
+              ltp        : tick.ltp,
+              bid        : tick.bid,
+              ask        : tick.ask,
+              net_change : tick.change,
+              change_pct : tick.pchange,
+              high       : tick.ohlc?.h,
+              low        : tick.ohlc?.l,
+              open       : tick.ohlc?.o,
+              close      : null,
+              source     : 'vedpragya',
+              is_banned  : false,
+            }
+          : null;
+
         return {
           ...w,
-          script: live || null,
+          script,
           tradable: !!live,
         };
       });
-  }, [watchItems, scripts, search]);
+  }, [watchItems, scripts, vpTicks, search]);
 
   const segmentRows = rows.filter((r) => r.segment === segment);
-  const otherRows = rows.filter((r) => r.segment !== segment);
+  const otherRows   = rows.filter((r) => r.segment !== segment);
 
   return (
     <div>
+      {/* Vedpragya Instrument Search — add any of 200k+ instruments */}
+      <div className="mb-3 flex items-center gap-2">
+        <div className="flex-1">
+          <VedpragyaSearch
+            onSelect={onVpSelect}
+            placeholder="Search 200,000+ instruments via Vedpragya… (RELIANCE, NIFTY, GOLD, etc.)"
+          />
+        </div>
+
+        {/* Socket.IO live stream status */}
+        {watchSymbols.length > 0 && (
+          <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[10px] font-bold border shrink-0 ${
+            vpStatus === 'live'       ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+            vpStatus === 'connecting' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
+            vpStatus === 'error'      ? 'bg-red-500/10 text-red border-red-500/20' :
+            'bg-surface2 text-muted border-border'
+          }`} title={vpStatus === 'live' ? 'Vedpragya live stream connected' : vpStatus}>
+            <span className={`w-1.5 h-1.5 rounded-full ${
+              vpStatus === 'live'       ? 'bg-green-400 animate-pulse' :
+              vpStatus === 'connecting' ? 'bg-yellow-400 animate-pulse' :
+              vpStatus === 'error'      ? 'bg-red' :
+              'bg-muted'
+            }`} />
+            {vpStatus === 'live' ? 'LIVE' : vpStatus === 'connecting' ? 'CONN…' : vpStatus === 'error' ? 'ERR' : '—'}
+          </div>
+        )}
+      </div>
+
       {/* Filter bar */}
       <div className="bg-surface border border-border rounded p-3 mb-4">
         <div className="grid grid-cols-2 md:grid-cols-7 gap-3 items-end">
@@ -384,28 +519,21 @@ export default function WatchlistPage() {
             />
           </Field>
 
-          <Field label="CE/PE">
-            <Combobox
-              value={optionType}
-              onChange={setOptionType}
-              options={[
-                { value: '', label: '—' },
-                { value: 'CE', label: 'CE' },
-                { value: 'PE', label: 'PE' },
-              ]}
-              searchable={false}
-              placeholder="—"
-            />
-          </Field>
-
-          <Field label="STRIKE">
-            <Combobox
-              value={strike}
-              onChange={setStrike}
-              options={strikeOptions}
-              placeholder="Select..."
-            />
-          </Field>
+          {segmentDef?.isOption && (
+            <Field label="CE/PE">
+              <Combobox
+                value={optionType}
+                onChange={setOptionType}
+                options={[
+                  { value: '', label: '—' },
+                  { value: 'CE', label: 'CE' },
+                  { value: 'PE', label: 'PE' },
+                ]}
+                searchable={false}
+                placeholder="—"
+              />
+            </Field>
+          )}
 
           <button
             onClick={onAdd}

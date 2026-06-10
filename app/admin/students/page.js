@@ -96,6 +96,8 @@ export default function StudentsPage() {
                 <th className="text-right">Balance</th>
                 <th className="text-right">Exposure</th>
                 <th className="text-right">Trades</th>
+                <th>Brokerage</th>
+                <th>Auto Cut</th>
                 <th>Role</th>
                 <th>Status</th>
                 <th>Created</th>
@@ -111,6 +113,21 @@ export default function StudentsPage() {
                   <td className="price text-right text-accent">₹{fmt(s.balance)}</td>
                   <td className="price text-right text-warn">₹{fmt(s.exposure)}</td>
                   <td className="price text-right">{s.trade_count}</td>
+                  <td className="text-xs text-muted">
+                    {Number(s.brokerage_value) > 0
+                      ? `₹${Number(s.brokerage_value).toLocaleString('en-IN')} / ${s.brokerage_type === 'per_crore' ? 'Cr' : 'Lot'}`
+                      : '—'}
+                  </td>
+                  <td>
+                    {s.auto_cut ? (
+                      <div>
+                        <span className="badge-bad text-[10px]">ON</span>
+                        <div className="text-[10px] text-muted mt-0.5">₹{Number(s.auto_cut_limit || 0).toLocaleString('en-IN')}</div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted">Off</span>
+                    )}
+                  </td>
                   <td className="text-xs uppercase text-muted tracking-wider font-semibold">{s.role}</td>
                   <td>
                     <span className={s.is_active ? 'badge-ok' : 'badge-bad'}>
@@ -164,6 +181,10 @@ function CreateStudentModal({ onClose, onCreated }) {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [balance, setBalance] = useState(500000);
+  const [brokerageType, setBrokerageType] = useState('per_lot');
+  const [brokerageValue, setBrokerageValue] = useState('');
+  const [autoCut, setAutoCut] = useState(false);
+  const [autoCutLimit, setAutoCutLimit] = useState('');
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState(null);
 
@@ -176,6 +197,10 @@ function CreateStudentModal({ onClose, onCreated }) {
 
   const submit = async (e) => {
     e.preventDefault();
+    if (autoCut && (!autoCutLimit || Number(autoCutLimit) <= 0)) {
+      toast.error('Please set a valid Auto-Cut limit amount');
+      return;
+    }
     setBusy(true);
     try {
       const { data } = await api.post('/admin/students', {
@@ -183,6 +208,10 @@ function CreateStudentModal({ onClose, onCreated }) {
         password,
         full_name: fullName.trim(),
         balance: Number(balance),
+        brokerage_type: brokerageType,
+        brokerage_value: brokerageValue !== '' ? Number(brokerageValue) : 0,
+        auto_cut: autoCut,
+        auto_cut_limit: autoCut && autoCutLimit ? Number(autoCutLimit) : null,
       });
       setCreated({ ...data.student, password });
       toast.success(`Student "${data.student.username}" created`);
@@ -204,6 +233,8 @@ function CreateStudentModal({ onClose, onCreated }) {
               <Row label="Password" value={created.password} />
               <Row label="Full Name" value={created.full_name || '—'} />
               <Row label="Starting Balance" value={`₹${Number(created.balance).toLocaleString('en-IN')}`} />
+              <Row label="Brokerage" value={Number(created.brokerage_value) > 0 ? `₹${Number(created.brokerage_value).toLocaleString('en-IN')} / ${created.brokerage_type === 'per_crore' ? 'Crore' : 'Lot'}` : 'None'} />
+              <Row label="Auto Cut" value={created.auto_cut ? `ON — ₹${Number(created.auto_cut_limit || 0).toLocaleString('en-IN')}` : 'Off'} />
             </div>
           </div>
           <div className="text-xs text-muted">
@@ -238,6 +269,57 @@ function CreateStudentModal({ onClose, onCreated }) {
         <Field label="Starting Balance (₹)">
           <input className="input price" type="number" min="0" step="1000" value={balance} onChange={(e) => setBalance(e.target.value)} />
         </Field>
+
+        {/* Brokerage Section */}
+        <div className="border border-border/60 rounded-lg p-3 space-y-3 bg-surface2/40">
+          <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">Brokerage Settings</div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Brokerage Type">
+              <select className="input" value={brokerageType} onChange={(e) => setBrokerageType(e.target.value)}>
+                <option value="per_lot">Per Lot</option>
+                <option value="per_crore">Per Crore</option>
+              </select>
+            </Field>
+            <Field label={brokerageType === 'per_crore' ? 'Rate (₹ per Crore)' : 'Rate (₹ per Lot)'} hint="0 = no brokerage">
+              <input className="input price" type="number" min="0" step="0.01" value={brokerageValue} onChange={(e) => setBrokerageValue(e.target.value)} placeholder="0.00" />
+            </Field>
+          </div>
+        </div>
+
+        {/* Auto Cut Section */}
+        <div className="border border-border/60 rounded-lg p-3 space-y-3 bg-surface2/40">
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">Auto Cut (Trading Limit)</div>
+            <button
+              type="button"
+              onClick={() => setAutoCut(!autoCut)}
+              className={`w-12 h-6 rounded-full relative transition-colors duration-200 focus:outline-none ${autoCut ? 'bg-accent' : 'bg-surface2 border border-border'}`}
+            >
+              <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform duration-200 ${autoCut ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          {autoCut && (
+            <Field
+              label="Auto Cut Limit (₹)"
+              hint="Trading will be blocked once daily trade value reaches this amount"
+            >
+              <input
+                className="input price"
+                type="number"
+                min="0"
+                step="1000"
+                value={autoCutLimit}
+                onChange={(e) => setAutoCutLimit(e.target.value)}
+                placeholder="e.g. 450000"
+                required={autoCut}
+              />
+            </Field>
+          )}
+          {!autoCut && (
+            <div className="text-xs text-muted">Auto Cut is disabled. Enable to restrict daily trading volume.</div>
+          )}
+        </div>
+
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
           <button type="submit" disabled={busy} className="btn-primary">{busy ? 'Creating…' : 'Create Student'}</button>
@@ -253,13 +335,32 @@ function EditStudentModal({ student, onClose, onSaved }) {
   const [balance, setBalance] = useState(student.balance);
   const [role, setRole] = useState(student.role || 'user');
   const [password, setPassword] = useState('');
+  const [brokerageType, setBrokerageType] = useState(student.brokerage_type || 'per_lot');
+  const [brokerageValue, setBrokerageValue] = useState(student.brokerage_value != null ? String(student.brokerage_value) : '');
+  const [autoCut, setAutoCut] = useState(student.auto_cut || false);
+  const [autoCutLimit, setAutoCutLimit] = useState(student.auto_cut_limit != null ? String(student.auto_cut_limit) : '');
+  const [creditAmount, setCreditAmount] = useState('');
+  const [creditDesc, setCreditDesc] = useState('');
+  const [creditBusy, setCreditBusy] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
+    if (autoCut && (!autoCutLimit || Number(autoCutLimit) <= 0)) {
+      toast.error('Please set a valid Auto-Cut limit amount');
+      return;
+    }
     setBusy(true);
     try {
-      const body = { full_name: fullName, balance: Number(balance), role };
+      const body = {
+        full_name: fullName,
+        balance: Number(balance),
+        role,
+        brokerage_type: brokerageType,
+        brokerage_value: brokerageValue !== '' ? Number(brokerageValue) : 0,
+        auto_cut: autoCut,
+        auto_cut_limit: autoCut && autoCutLimit ? Number(autoCutLimit) : null,
+      };
       if (password) body.password = password;
       await api.patch(`/admin/students/${student.id}`, body);
       toast.success(`Updated ${student.username}`);
@@ -271,29 +372,138 @@ function EditStudentModal({ student, onClose, onSaved }) {
     }
   };
 
+  const addCredit = async () => {
+    if (!creditAmount || Number(creditAmount) <= 0) {
+      toast.error('Enter a valid credit amount');
+      return;
+    }
+    setCreditBusy(true);
+    try {
+      const { data } = await api.post(`/admin/students/${student.id}/credit`, {
+        amount: Number(creditAmount),
+        description: creditDesc.trim() || 'Admin credit',
+      });
+      toast.success(`₹${Number(creditAmount).toLocaleString('en-IN')} credited. New balance: ₹${Number(data.new_balance).toLocaleString('en-IN')}`);
+      setCreditAmount('');
+      setCreditDesc('');
+      onSaved();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Credit failed');
+    } finally {
+      setCreditBusy(false);
+    }
+  };
+
   return (
     <Modal onClose={onClose} title={`Edit · ${student.username}`} accent="brand">
-      <form onSubmit={submit} className="space-y-4">
-        <Field label="Full Name">
-          <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-        </Field>
-        <Field label="Balance (₹)" hint={`Current: ₹${Number(student.balance).toLocaleString('en-IN')} · changes are recorded in ledger`}>
-          <input className="input price" type="number" step="0.01" value={balance} onChange={(e) => setBalance(e.target.value)} />
-        </Field>
-        <Field label="Account Role" hint="Admin has full access to the entire platform.">
-          <select className="input" value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="user">User (Student/Trader)</option>
-            <option value="admin">Administrator</option>
-          </select>
-        </Field>
-        <Field label="Reset Password" hint="Leave blank to keep the existing password">
-          <input className="input" placeholder="New password (optional)" value={password} onChange={(e) => setPassword(e.target.value)} />
-        </Field>
-        <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
-          <button type="submit" disabled={busy} className="btn-primary">{busy ? 'Saving…' : 'Save Changes'}</button>
+      <div className="max-h-[80vh] overflow-y-auto pr-1 space-y-5">
+        <form onSubmit={submit} className="space-y-4">
+          <Field label="Full Name">
+            <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          </Field>
+          <Field label="Balance (₹)" hint={`Current: ₹${Number(student.balance).toLocaleString('en-IN')} · changes are recorded in ledger`}>
+            <input className="input price" type="number" step="0.01" value={balance} onChange={(e) => setBalance(e.target.value)} />
+          </Field>
+          <Field label="Account Role" hint="Admin has full access to the entire platform.">
+            <select className="input" value={role} onChange={(e) => setRole(e.target.value)}>
+              <option value="user">User (Student/Trader)</option>
+              <option value="admin">Administrator</option>
+            </select>
+          </Field>
+          <Field label="Reset Password" hint="Leave blank to keep the existing password">
+            <input className="input" placeholder="New password (optional)" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </Field>
+
+          {/* Brokerage Section */}
+          <div className="border border-border/60 rounded-lg p-3 space-y-3 bg-surface2/40">
+            <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">Brokerage Settings</div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Brokerage Type">
+                <select className="input" value={brokerageType} onChange={(e) => setBrokerageType(e.target.value)}>
+                  <option value="per_lot">Per Lot</option>
+                  <option value="per_crore">Per Crore</option>
+                </select>
+              </Field>
+              <Field label={brokerageType === 'per_crore' ? 'Rate (₹ per Crore)' : 'Rate (₹ per Lot)'} hint="0 = no brokerage">
+                <input className="input price" type="number" min="0" step="0.01" value={brokerageValue} onChange={(e) => setBrokerageValue(e.target.value)} placeholder="0.00" />
+              </Field>
+            </div>
+          </div>
+
+          {/* Auto Cut Section */}
+          <div className="border border-border/60 rounded-lg p-3 space-y-3 bg-surface2/40">
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">Auto Cut (Trading Limit)</div>
+              <button
+                type="button"
+                onClick={() => setAutoCut(!autoCut)}
+                className={`w-12 h-6 rounded-full relative transition-colors duration-200 focus:outline-none ${autoCut ? 'bg-accent' : 'bg-surface2 border border-border'}`}
+              >
+                <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform duration-200 ${autoCut ? 'translate-x-6' : 'translate-x-0'}`} />
+              </button>
+            </div>
+            {autoCut && (
+              <Field
+                label="Auto Cut Limit (₹)"
+                hint="Trading will be blocked once daily trade value reaches this amount"
+              >
+                <input
+                  className="input price"
+                  type="number"
+                  min="0"
+                  step="1000"
+                  value={autoCutLimit}
+                  onChange={(e) => setAutoCutLimit(e.target.value)}
+                  placeholder="e.g. 450000"
+                />
+              </Field>
+            )}
+            {!autoCut && (
+              <div className="text-xs text-muted">Auto Cut is disabled. Enable to restrict daily trading volume.</div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
+            <button type="submit" disabled={busy} className="btn-primary">{busy ? 'Saving…' : 'Save Changes'}</button>
+          </div>
+        </form>
+
+        {/* Credit Account Section */}
+        <div className="border border-accent/30 rounded-lg p-4 bg-accent/5 space-y-3">
+          <div className="text-[10px] uppercase tracking-wider text-accent font-semibold">Add Credit to Account</div>
+          <div className="text-xs text-muted">Add funds to this user&apos;s balance. A ledger entry will be created automatically.</div>
+          <Field label="Credit Amount (₹)">
+            <input
+              className="input price"
+              type="number"
+              min="1"
+              step="1000"
+              value={creditAmount}
+              onChange={(e) => setCreditAmount(e.target.value)}
+              placeholder="e.g. 50000"
+            />
+          </Field>
+          <Field label="Description (optional)">
+            <input
+              className="input"
+              value={creditDesc}
+              onChange={(e) => setCreditDesc(e.target.value)}
+              placeholder="Admin credit — contest bonus"
+            />
+          </Field>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={addCredit}
+              disabled={creditBusy || !creditAmount}
+              className="btn-primary text-sm"
+            >
+              {creditBusy ? 'Adding…' : '+ Add Credit'}
+            </button>
+          </div>
         </div>
-      </form>
+      </div>
     </Modal>
   );
 }
@@ -301,7 +511,7 @@ function EditStudentModal({ student, onClose, onSaved }) {
 function Modal({ title, children, onClose }) {
   return (
     <div className="fixed inset-0 z-[60] bg-fg/40 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-md shadow-glow" onClick={(e) => e.stopPropagation()}>
+      <div className="card w-full max-w-lg shadow-glow" onClick={(e) => e.stopPropagation()}>
         <div className="px-5 py-3 border-b border-border flex items-center justify-between bg-brand/10">
           <h3 className="heading text-lg font-bold tracking-wide">{title}</h3>
           <button onClick={onClose} className="text-muted hover:text-fg text-xl leading-none">×</button>
@@ -351,7 +561,7 @@ function ForensicsModal({ student, onClose }) {
   return (
     <Modal onClose={onClose} title={`Forensic Report: ${student.username}`} accent="brand">
       {loading ? (
-        <div className="text-muted text-sm p-4">Analyzing {student.username}'s behavior and portfolio integrity...</div>
+        <div className="text-muted text-sm p-4">Analyzing {student.username}&apos;s behavior and portfolio integrity...</div>
       ) : error ? (
         <div className="text-red p-4">{error}</div>
       ) : (
