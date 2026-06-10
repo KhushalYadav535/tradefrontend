@@ -6,22 +6,11 @@ import InlineOrderPanel from '@/components/InlineOrderPanel';
 import EmptyState from '@/components/EmptyState';
 import Combobox from '@/components/Combobox';
 import { useToast } from '@/components/Toast';
-import { SCRIPT_CATALOG, EXPIRY_CATALOG } from '@/lib/catalog';
+import { EXPIRY_CATALOG } from '@/lib/catalog';
 import useOptionChain from '@/hooks/useOptionChain';
 import api from '@/lib/axios';
 import VedpragyaSearch from '@/components/VedpragyaSearch';
 import useVedpragyaStream from '@/hooks/useVedpragyaStream';
-
-const SEGMENTS = [
-  { value: 'NSEFUT', label: 'NSEFUT', exchange: 'NSE' },
-  { value: 'MCXFUT', label: 'MCXFUT', exchange: 'MCX' },
-  { value: 'NSEOPT', label: 'NSEOPT', exchange: 'NSE', isOption: true },
-  { value: 'GLOBAL_FUT', label: 'GLOBAL FUTURES', exchange: 'GLOBAL' },
-  { value: 'MCXOPT', label: 'MCXOPT', exchange: 'MCX', isOption: true },
-  { value: 'NSECDS', label: 'NSECDS', exchange: 'FOREX' },
-  { value: 'NSEEQT', label: 'NSEEQT', exchange: 'NSE' },
-  { value: 'GLOBAL_STK', label: 'GLOBAL STOCKS', exchange: 'GLOBAL' },
-];
 
 const STORAGE_KEY = 'avadh15_watchlist_v2';
 
@@ -248,11 +237,12 @@ export default function WatchlistPage() {
   const { scripts, loading, error } = usePrices(3000);
   const toast = useToast();
 
-  const [segment, setSegment] = useState('NSEOPT');
+  const [segments, setSegments] = useState([]);
+  const [segment, setSegment] = useState('');
   const [orderFor, setOrderFor] = useState(null);
   const [search, setSearch] = useState('');
 
-  const segmentDef = SEGMENTS.find((s) => s.value === segment);
+  const segmentDef = segments.find((s) => s.value === segment);
 
   // Filter-bar selections (drive the + button)
   const [scriptName, setScriptName] = useState('');
@@ -266,6 +256,17 @@ export default function WatchlistPage() {
 
   // Load from API on mount
   useEffect(() => {
+    api.get('/scripts/indices').then(({ data }) => {
+      const segs = (data.indices || []).map(idx => ({
+        value: idx.value,
+        label: idx.label,
+        isOption: idx.value.endsWith('OPT'),
+        exchange: idx.value.startsWith('MCX') ? 'MCX' : idx.value.startsWith('GLOBAL') ? 'GLOBAL' : 'NSE'
+      }));
+      setSegments(segs);
+      if (segs.length > 0) setSegment(segs[0].value);
+    }).catch(console.error);
+
     api.get('/watchlist')
       .then(({ data }) => {
         const items = data.items.map(dbRowToItem);
@@ -281,11 +282,15 @@ export default function WatchlistPage() {
   }, []);
 
   // Reset selections when segment changes
-  const scriptOptions = useMemo(() => SCRIPT_CATALOG[segment] || [], [segment]);
+  // Reset selections when segment changes
+  const scriptOptions = useMemo(() => {
+    return [...new Set(scripts.filter(s => s.exchange === segment).map(s => s.name))];
+  }, [segment, scripts]);
+  
   useEffect(() => {
     setScriptName(scriptOptions[0] || '');
     setOptionType('');
-  }, [segment]); // eslint-disable-line
+  }, [segment, scriptOptions]);
 
 
   // Live expiries from option chain when available (strike data not used)
@@ -382,12 +387,12 @@ export default function WatchlistPage() {
     toast.info('Removed from watchlist');
   };
 
-  // Segment → exchange map (mirrors SEGMENTS constant defined at top of file)
+  // Segment → exchange map
   const SEGMENT_EXCHANGE = useMemo(() => {
     const m = {};
-    for (const seg of SEGMENTS) m[seg.value] = seg.exchange || '';
+    for (const seg of segments) m[seg.value] = seg.exchange || '';
     return m;
-  }, []);
+  }, [segments]);
 
   // Collect unique "SYMBOL:EXCHANGE" tokens → feed to Vedpragya stream
   // Sending the exchange lets the backend pick the correct MCX/NSE UIR ID.
@@ -494,7 +499,7 @@ export default function WatchlistPage() {
               <Combobox
                 value={segment}
                 onChange={setSegment}
-                options={SEGMENTS}
+                options={segments}
               />
             </Field>
           </div>
