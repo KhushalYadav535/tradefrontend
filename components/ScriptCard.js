@@ -40,7 +40,7 @@ export default function ScriptCard({ script, onTrade }) {
           </div>
         </div>
         <div className="text-right">
-          <div className="price text-lg font-semibold">{Number(script.current_price).toFixed(2)}</div>
+          <div className="price text-lg font-semibold">{Number(script.ltp ?? script.current_price).toFixed(2)}</div>
           <div className={`text-xs price ${up ? 'text-accent' : 'text-red'}`}>
             {up ? '▲' : '▼'} {Math.abs(script.change_pct || 0).toFixed(2)}%
           </div>

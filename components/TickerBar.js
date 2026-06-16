@@ -17,7 +17,7 @@ export default function TickerBar() {
             <span key={`${s.id}-${i}`} className="text-xs flex items-center gap-2">
               <span className="text-muted">{s.exchange}</span>
               <span className="font-semibold">{s.name}</span>
-              <span className="price">{Number(s.current_price).toFixed(2)}</span>
+              <span className="price">{Number(s.ltp ?? s.current_price).toFixed(2)}</span>
               <span className={`price ${up ? 'text-accent' : 'text-red'}`}>
                 {up ? '▲' : '▼'} {Math.abs(s.change_pct || 0).toFixed(2)}%
               </span>
