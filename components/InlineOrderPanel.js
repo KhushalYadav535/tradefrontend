@@ -10,8 +10,11 @@ function fmt(n, d = 2) {
 }
 
 function expiryLabel(s) {
-  // Convert "OCT" → "26OCT2026" (rough display only)
-  return s?.expiry ? `26${s.expiry}2026` : '';
+  if (!s?.expiry) return '';
+  // If it's already a full date string like 2026-08-05 or 16JUN2026, return it directly
+  if (s.expiry.length >= 5) return s.expiry;
+  // Fallback for just "OCT" or "DEC" (legacy NSE format)
+  return `26${s.expiry}2026`;
 }
 
 function StatCell({ label, value, highlight, tone }) {

@@ -42,10 +42,15 @@ export default function useVedpragyaStream(symbols = []) {
   const uirMapRef    = useRef({});  // { uirId: symbol }
   const lastSeqRef   = useRef({});  // { uirId: seq }  — dedupe out-of-order ticks
   const mountedRef   = useRef(true);
+  const symbolsRef   = useRef(symbols); // always holds latest symbols — avoids stale closure
   const symbolsKey   = symbols.slice().sort().join(',');
 
+  // Keep ref in sync with latest symbols prop
+  useEffect(() => { symbolsRef.current = symbols; }, [symbols]);
+
   const connect = useCallback(async () => {
-    if (!symbols.length) return;
+    const currentSymbols = symbolsRef.current;
+    if (!currentSymbols.length) return;
     if (!mountedRef.current) return;
     setStatus('connecting');
     setError(null);
@@ -57,7 +62,7 @@ export default function useVedpragyaStream(symbols = []) {
       if (!socketUrl || !apiKey) throw new Error('Missing socket config from backend');
 
       // 2. Resolve UIR IDs for the given symbols
-      const { data: streamInfo } = await api.get(`/market/stream-info?symbols=${symbols.join(',')}`);
+      const { data: streamInfo } = await api.get(`/market/stream-info?symbols=${currentSymbols.join(',')}`);
       const instruments = (streamInfo.instruments || []);
       const uirIds = instruments
         .filter(i => i.uirId != null)
@@ -104,25 +109,21 @@ export default function useVedpragyaStream(symbols = []) {
       socket.on('market_data', (tick) => {
         if (!mountedRef.current) return;
 
-        // Dedupe out-of-order ticks using seq
-        const prevSeq = lastSeqRef.current[tick.uirId] ?? 0;
-        if (tick.seq != null && tick.seq <= prevSeq) return;
-        if (tick.seq != null) lastSeqRef.current[tick.uirId] = tick.seq;
-
         const symbol = uirMapRef.current[tick.uirId] || tick.uirId;
 
         setTicks(prev => ({
           ...prev,
           [symbol]: {
-            ltp    : tick.last_price    ?? tick.lastPrice,
+            ltp    : tick.ltp ?? tick.price ?? tick.last_price ?? tick.lastPrice,
             change : tick.change,
-            pchange: tick.pchange       ?? tick.changePct,
+            pchange: tick.pchange ?? tick.changePct,
             bid    : tick.bid,
             ask    : tick.ask,
             volume : tick.volume,
-            ohlc   : tick.ohlc,
-            ts     : tick.ts,
-            seq    : tick.seq,
+            vwap   : tick.vwap ?? tick.avg_price ?? tick.average_price,
+            oi     : tick.oi ?? tick.open_interest,
+            ohlc   : tick.ohlc ?? { o: tick.open, h: tick.high, l: tick.low, c: tick.close },
+            ts     : tick.ts ?? tick.timestamp,
             uirId  : tick.uirId,
           },
         }));

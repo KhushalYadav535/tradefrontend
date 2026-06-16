@@ -11,14 +11,18 @@ export default function OrderModal({ script, side, onClose, onPlaced }) {
   const [orderType, setOrderType] = useState('MARKET');
   const [productType, setProductType] = useState('INTRADAY');
   const [lots, setLots] = useState(1);
-  const [price, setPrice] = useState(Number(script?.current_price || 0).toFixed(2));
   const [submitting, setSubmitting] = useState(false);
 
+  // Use live VP ltp/bid/ask — same priority as InlineOrderPanel
+  const ltp = Number(script?.ltp ?? script?.current_price ?? 0);
+  const bid = Number(script?.bid ?? ltp);
+  const ask = Number(script?.ask ?? ltp);
+
+  const [price, setPrice] = useState(ltp.toFixed(2));
+
   useEffect(() => {
-    if (orderType === 'MARKET') {
-      setPrice(Number(script.current_price).toFixed(2));
-    }
-  }, [script.current_price, orderType]);
+    if (orderType === 'MARKET') setPrice(ltp.toFixed(2));
+  }, [ltp, orderType]);
 
   if (!script) return null;
 
@@ -34,11 +38,15 @@ export default function OrderModal({ script, side, onClose, onPlaced }) {
     }
     setSubmitting(true);
     try {
+      // For MARKET orders use bid (sell) or ask (buy) — live VP price
+      const execPrice = orderType === 'MARKET'
+        ? (tradeSide === 'SELL' ? bid : ask)
+        : Number(price);
       const { data } = await api.post('/trades', {
         script_id: script.id,
         trade_type: tradeSide,
         lots: Number(lots),
-        price: orderType === 'MARKET' ? Number(script.current_price) : Number(price),
+        price: execPrice,
         order_type: orderType,
         product_type: productType,
         nonce: crypto.randomUUID(),
@@ -82,7 +90,10 @@ export default function OrderModal({ script, side, onClose, onPlaced }) {
             <div className="text-xs text-muted">{script.exchange} · Lot {script.lot_size}</div>
           </div>
           <div className="text-right">
-            <div className="price text-lg font-semibold">{Number(script.current_price).toFixed(2)}</div>
+            <div className="price text-lg font-semibold">{ltp.toFixed(2)}</div>
+            <div className="text-[10px] text-muted/80">
+              B: {bid.toFixed(2)} · A: {ask.toFixed(2)}
+            </div>
             <span className={`badge ${side === 'BUY' ? 'badge-buy' : 'badge-sell'}`}>{side}</span>
           </div>
         </div>

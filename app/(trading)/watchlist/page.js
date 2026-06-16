@@ -6,8 +6,9 @@ import InlineOrderPanel from '@/components/InlineOrderPanel';
 import EmptyState from '@/components/EmptyState';
 import Combobox from '@/components/Combobox';
 import { useToast } from '@/components/Toast';
-import { EXPIRY_CATALOG } from '@/lib/catalog';
+import { EXPIRY_CATALOG, mcxExpiriesFor } from '@/lib/catalog';
 import useOptionChain from '@/hooks/useOptionChain';
+import useVedpragyaExpiries from '@/hooks/useVedpragyaExpiries';
 import api from '@/lib/axios';
 import VedpragyaSearch from '@/components/VedpragyaSearch';
 import useVedpragyaStream from '@/hooks/useVedpragyaStream';
@@ -282,21 +283,44 @@ export default function WatchlistPage() {
   }, []);
 
   // Reset selections when segment changes
-  // Reset selections when segment changes
   const scriptOptions = useMemo(() => {
-    return [...new Set(scripts.filter(s => s.exchange === segment).map(s => s.name))];
-  }, [segment, scripts]);
+    // `segment` is like "MCXFUT" / "NSEFUT" but scripts.exchange is "MCX" / "NSE"
+    // Resolve the exchange string from the segments array first
+    const ex = segments.find(s => s.value === segment)?.exchange || segment;
+    return [...new Set(scripts.filter(s => s.exchange === ex).map(s => s.name))];
+  }, [segment, scripts, segments]);
   
   useEffect(() => {
-    setScriptName(scriptOptions[0] || '');
-    setOptionType('');
-  }, [segment, scriptOptions]);
+    setScriptName(prev => {
+      if (scriptOptions.length === 0) return '';
+      if (scriptOptions.includes(prev)) return prev;
+      return scriptOptions[0];
+    });
+  }, [scriptOptions]);
 
+  useEffect(() => {
+    setOptionType('');
+    setExpiry(segment?.startsWith('MCX') ? mcxExpiriesFor(scriptName)[0] : EXPIRY_CATALOG[0]);
+  }, [segment, scriptName]);
+
+
+  // Dynamic expiries directly from Vedpragya
+  const { expiries: vpExpiries } = useVedpragyaExpiries(scriptName, segment);
 
   // Live expiries from option chain when available (strike data not used)
   const optionChain = useOptionChain(segmentDef?.isOption ? scriptName : null);
   const liveExpiries = optionChain.data?.expiries || [];
-  const expiryOptions = (segmentDef?.isOption && liveExpiries.length) ? liveExpiries : EXPIRY_CATALOG;
+  const isMcx = segment?.startsWith('MCX');
+  
+  const baseCatalog = isMcx ? (vpExpiries.length ? vpExpiries : mcxExpiriesFor(scriptName)) : EXPIRY_CATALOG;
+  const expiryOptions = (segmentDef?.isOption && liveExpiries.length) ? liveExpiries : baseCatalog;
+
+  // Auto-select dynamic expiry if loaded and current is invalid
+  useEffect(() => {
+    if (vpExpiries.length > 0 && !vpExpiries.includes(expiry) && isMcx) {
+      setExpiry(vpExpiries[0]);
+    }
+  }, [vpExpiries, expiry, isMcx]);
 
 
   // If user picked an expiry that isn't in the live list, snap to first
@@ -401,7 +425,11 @@ export default function WatchlistPage() {
     return watchItems
       .map((w) => {
         const ex = SEGMENT_EXCHANGE[w.segment] || '';
-        return ex ? `${w.name}:${ex}` : w.name;
+        let qName = w.name;
+        if (w.expiry && !qName.includes(w.expiry)) {
+          qName = `${qName} ${w.expiry}`;
+        }
+        return ex ? `${qName}:${ex}` : qName;
       })
       .filter((tok) => { if (seen.has(tok)) return false; seen.add(tok); return true; });
   }, [watchItems, SEGMENT_EXCHANGE]);
@@ -415,12 +443,16 @@ export default function WatchlistPage() {
       .filter((w) => (search ? w.name.toLowerCase().includes(search.toLowerCase()) : true))
       .map((w) => {
         const live  = scripts.find((s) => s.name === w.name) || null;
-        const tick  = vpTicks[w.name] || null;
+        // The tick key could be just w.name or w.name + w.expiry
+        const qName = w.expiry && !w.name.includes(w.expiry) ? `${w.name} ${w.expiry}` : w.name;
+        const tick  = vpTicks[qName] || vpTicks[w.name] || null;
 
         // Merge: tick overrides LTP/change/bid/ask from REST base
         const script = live
           ? {
               ...live,
+              name      : w.name,
+              expiry    : w.expiry || live.expiry,
               ltp       : tick?.ltp      ?? live.ltp,
               bid       : tick?.bid      ?? live.bid,
               ask       : tick?.ask      ?? live.ask,
@@ -429,13 +461,16 @@ export default function WatchlistPage() {
               high      : tick?.ohlc?.h  ?? live.high,
               low       : tick?.ohlc?.l  ?? live.low,
               open      : tick?.ohlc?.o  ?? live.open,
+              close     : tick?.ohlc?.c  ?? live.close,
               volume    : tick?.volume   ?? live.volume,
               source    : tick ? 'vedpragya' : live.source,
+              timestamp : tick?.ts       ?? live.timestamp,
             }
           : tick
           ? {
               // We have a live tick but no REST entry — construct a minimal script
               name       : w.name,
+              expiry     : w.expiry,
               ltp        : tick.ltp,
               bid        : tick.bid,
               ask        : tick.ask,
