@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import usePrices from '@/hooks/usePrices';
 import InlineOrderPanel from '@/components/InlineOrderPanel';
 import EmptyState from '@/components/EmptyState';
@@ -41,7 +41,49 @@ function loadWatch() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
 }
 function saveWatch(items) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch { }
+}
+
+/**
+ * FlashCell — <td> that flashes GREEN on UP tick, RED on DOWN tick.
+ * Works by tracking previous value in a ref and imperatively toggling CSS class.
+ */
+function FlashCell({ value, type, children, onClick, title }) {
+  const ref = useRef(null);
+  const prev = useRef(null);
+  const timer = useRef(null);
+
+  useEffect(() => {
+    if (value == null) return;
+    if (prev.current == null) { prev.current = value; return; }
+    if (value === prev.current) return;
+
+    const dir = value > prev.current ? 'tick-up' : 'tick-down';
+    prev.current = value;
+
+    const el = ref.current;
+    if (!el) return;
+
+    // Remove both classes, force reflow, then add correct class
+    el.classList.remove('tick-up', 'tick-down');
+    // eslint-disable-next-line no-unused-expressions
+    el.offsetWidth; // trigger reflow to restart animation
+    el.classList.add(dir);
+
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      el.classList.remove('tick-up', 'tick-down');
+    }, 700);
+  }, [value]);
+
+  // Cleanup on unmount
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  return (
+    <td ref={ref} className={`cell-${type}`} onClick={onClick} title={title}>
+      {children ?? (value != null ? fmt(value) : '—')}
+    </td>
+  );
 }
 
 function ScriptTable({ title, rows, onTrade, onRemove, segmentLabel }) {
@@ -63,7 +105,7 @@ function ScriptTable({ title, rows, onTrade, onRemove, segmentLabel }) {
       </div>
       {!collapsed && (
         <div className="border border-border rounded-b bg-surface overflow-hidden">
-          
+
           {/* Mobile Layout (Cards) — matches professional trading app style */}
           <div className="flex flex-col md:hidden">
             {rows.length === 0 ? (
@@ -96,8 +138,8 @@ function ScriptTable({ title, rows, onTrade, onRemove, segmentLabel }) {
                           LTP : <span className="price font-bold text-fg">{fmt(s.ltp)}</span>
                           {s.source && (
                             <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${s.source === 'vedpragya' ? 'bg-green-500/15 text-green-400' : s.source === 'yahoo' ? 'bg-blue-500/15 text-blue-400' : s.source === 'nse' ? 'bg-orange-500/15 text-orange-400' : 'bg-surface2 text-muted'}`}>
-                            {s.source === 'vedpragya' ? 'VP' : s.source === 'yahoo' ? 'YH' : s.source === 'nse' ? 'NSE' : 'SIM'}
-                          </span>
+                              {s.source === 'vedpragya' ? 'VP' : s.source === 'yahoo' ? 'YH' : s.source === 'nse' ? 'NSE' : 'SIM'}
+                            </span>
                           )}
                         </span>
                       )}
@@ -135,7 +177,7 @@ function ScriptTable({ title, rows, onTrade, onRemove, segmentLabel }) {
                         title="Remove"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                         </svg>
                       </button>
                     </div>
@@ -189,9 +231,19 @@ function ScriptTable({ title, rows, onTrade, onRemove, segmentLabel }) {
                       </td>
                       {s ? (
                         <>
-                          <td className="cell-bid" onClick={(e) => { e.stopPropagation(); tradable && !s.is_banned && onTrade(s, 'SELL'); }} title={tradable ? 'Click to SELL' : 'Quote only'}>{fmt(s.bid)}</td>
-                          <td className="cell-ask" onClick={(e) => { e.stopPropagation(); tradable && !s.is_banned && onTrade(s, 'BUY'); }} title={tradable ? 'Click to BUY' : 'Quote only'}>{fmt(s.ask)}</td>
-                          <td className="cell-ltp">
+                          <FlashCell
+                            type="bid"
+                            value={s.bid}
+                            onClick={(e) => { e.stopPropagation(); tradable && !s.is_banned && onTrade(s, 'SELL'); }}
+                            title={tradable ? 'Click to SELL' : 'Quote only'}
+                          />
+                          <FlashCell
+                            type="ask"
+                            value={s.ask}
+                            onClick={(e) => { e.stopPropagation(); tradable && !s.is_banned && onTrade(s, 'BUY'); }}
+                            title={tradable ? 'Click to BUY' : 'Quote only'}
+                          />
+                          <FlashCell type="ltp" value={s.ltp}>
                             <span className="flex items-center justify-end gap-1.5">
                               {fmt(s.ltp)}
                               {s.source && (
@@ -200,7 +252,7 @@ function ScriptTable({ title, rows, onTrade, onRemove, segmentLabel }) {
                                 </span>
                               )}
                             </span>
-                          </td>
+                          </FlashCell>
                           <td className={`price ${up ? 'text-accent' : 'text-red'}`}>{up ? '+' : ''}{fmt(s.change_pct)}%</td>
                           <td className={`price ${up ? 'text-accent' : 'text-red'}`}>
                             {up ? '▲' : '▼'} {fmt(Math.abs(s.net_change || 0))}
@@ -273,11 +325,11 @@ export default function WatchlistPage() {
         const items = data.items.map(dbRowToItem);
         setWatchItems(items);
         // Also cache locally for fast reload
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch {}
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch { }
       })
       .catch(() => {
         // Fallback to localStorage if API fails
-        try { setWatchItems(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')); } catch {}
+        try { setWatchItems(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')); } catch { }
       })
       .finally(() => setWatchLoading(false));
   }, []);
@@ -289,7 +341,7 @@ export default function WatchlistPage() {
     const ex = segments.find(s => s.value === segment)?.exchange || segment;
     return [...new Set(scripts.filter(s => s.exchange === ex).map(s => s.name))];
   }, [segment, scripts, segments]);
-  
+
   useEffect(() => {
     setScriptName(prev => {
       if (scriptOptions.length === 0) return '';
@@ -311,7 +363,7 @@ export default function WatchlistPage() {
   const optionChain = useOptionChain(segmentDef?.isOption ? scriptName : null);
   const liveExpiries = optionChain.data?.expiries || [];
   const isMcx = segment?.startsWith('MCX');
-  
+
   const baseCatalog = isMcx ? (vpExpiries.length ? vpExpiries : mcxExpiriesFor(scriptName)) : EXPIRY_CATALOG;
   const expiryOptions = (segmentDef?.isOption && liveExpiries.length) ? liveExpiries : baseCatalog;
 
@@ -358,7 +410,7 @@ export default function WatchlistPage() {
         : { key, segment: seg, name: sym, expiry: result.expiry || '', optionType: result.optionType || '', strike: result.strike || '' };
       const next = [...watchItems, newItem];
       setWatchItems(next);
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { }
       toast.success(`Added ${sym} to watchlist`);
     } catch {
       toast.error('Failed to add to watchlist');
@@ -392,7 +444,7 @@ export default function WatchlistPage() {
       const newItem = data.item ? dbRowToItem(data.item) : { key, segment, name: scriptName, expiry, optionType: otype, strike: stk };
       const next = [...watchItems, newItem];
       setWatchItems(next);
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { }
       const suffix = otype && stk ? ` ${stk} ${otype}` : '';
       toast.success(`Added ${scriptName}${suffix} to watchlist`);
     } catch {
@@ -403,11 +455,11 @@ export default function WatchlistPage() {
   const onRemove = async (key) => {
     const item = watchItems.find((x) => x.key === key);
     if (item?.id) {
-      try { await api.delete(`/watchlist/${item.id}`); } catch {}
+      try { await api.delete(`/watchlist/${item.id}`); } catch { }
     }
     const next = watchItems.filter((x) => x.key !== key);
     setWatchItems(next);
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { }
     toast.info('Removed from watchlist');
   };
 
@@ -442,48 +494,48 @@ export default function WatchlistPage() {
     return watchItems
       .filter((w) => (search ? w.name.toLowerCase().includes(search.toLowerCase()) : true))
       .map((w) => {
-        const live  = scripts.find((s) => s.name === w.name) || null;
+        const live = scripts.find((s) => s.name === w.name) || null;
         // The tick key could be just w.name or w.name + w.expiry
         const qName = w.expiry && !w.name.includes(w.expiry) ? `${w.name} ${w.expiry}` : w.name;
-        const tick  = vpTicks[qName] || vpTicks[w.name] || null;
+        const tick = vpTicks[qName] || vpTicks[w.name] || null;
 
         // Merge: tick overrides LTP/change/bid/ask from REST base
         const script = live
           ? {
-              ...live,
-              name      : w.name,
-              expiry    : w.expiry || live.expiry,
-              ltp       : tick?.ltp      ?? live.ltp,
-              bid       : tick?.bid      ?? live.bid,
-              ask       : tick?.ask      ?? live.ask,
-              net_change: tick?.change   ?? live.net_change,
-              change_pct: tick?.pchange  ?? live.change_pct,
-              high      : tick?.ohlc?.h  ?? live.high,
-              low       : tick?.ohlc?.l  ?? live.low,
-              open      : tick?.ohlc?.o  ?? live.open,
-              close     : tick?.ohlc?.c  ?? live.close,
-              volume    : tick?.volume   ?? live.volume,
-              source    : tick ? 'vedpragya' : live.source,
-              timestamp : tick?.ts       ?? live.timestamp,
-            }
+            ...live,
+            name: w.name,
+            expiry: w.expiry || live.expiry,
+            ltp: tick?.ltp ?? live.ltp,
+            bid: tick?.bid ?? live.bid,
+            ask: tick?.ask ?? live.ask,
+            net_change: tick?.change ?? live.net_change,
+            change_pct: tick?.pchange ?? live.change_pct,
+            high: tick?.ohlc?.h ?? live.high,
+            low: tick?.ohlc?.l ?? live.low,
+            open: tick?.ohlc?.o ?? live.open,
+            close: tick?.ohlc?.c ?? live.close,
+            volume: tick?.volume ?? live.volume,
+            source: tick ? 'vedpragya' : live.source,
+            timestamp: tick?.ts ?? live.timestamp,
+          }
           : tick
-          ? {
+            ? {
               // We have a live tick but no REST entry — construct a minimal script
-              name       : w.name,
-              expiry     : w.expiry,
-              ltp        : tick.ltp,
-              bid        : tick.bid,
-              ask        : tick.ask,
-              net_change : tick.change,
-              change_pct : tick.pchange,
-              high       : tick.ohlc?.h,
-              low        : tick.ohlc?.l,
-              open       : tick.ohlc?.o,
-              close      : null,
-              source     : 'vedpragya',
-              is_banned  : false,
+              name: w.name,
+              expiry: w.expiry,
+              ltp: tick.ltp,
+              bid: tick.bid,
+              ask: tick.ask,
+              net_change: tick.change,
+              change_pct: tick.pchange,
+              high: tick.ohlc?.h,
+              low: tick.ohlc?.l,
+              open: tick.ohlc?.o,
+              close: null,
+              source: 'vedpragya',
+              is_banned: false,
             }
-          : null;
+            : null;
 
         return {
           ...w,
@@ -494,7 +546,7 @@ export default function WatchlistPage() {
   }, [watchItems, scripts, vpTicks, search]);
 
   const segmentRows = rows.filter((r) => r.segment === segment);
-  const otherRows   = rows.filter((r) => r.segment !== segment);
+  const otherRows = rows.filter((r) => r.segment !== segment);
 
   return (
     <div>
@@ -509,18 +561,16 @@ export default function WatchlistPage() {
 
         {/* Socket.IO live stream status */}
         {watchSymbols.length > 0 && (
-          <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[10px] font-bold border shrink-0 ${
-            vpStatus === 'live'       ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-            vpStatus === 'connecting' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
-            vpStatus === 'error'      ? 'bg-red-500/10 text-red border-red-500/20' :
-            'bg-surface2 text-muted border-border'
-          }`} title={vpStatus === 'live' ? 'Vedpragya live stream connected' : vpStatus}>
-            <span className={`w-1.5 h-1.5 rounded-full ${
-              vpStatus === 'live'       ? 'bg-green-400 animate-pulse' :
-              vpStatus === 'connecting' ? 'bg-yellow-400 animate-pulse' :
-              vpStatus === 'error'      ? 'bg-red' :
-              'bg-muted'
-            }`} />
+          <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[10px] font-bold border shrink-0 ${vpStatus === 'live' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+              vpStatus === 'connecting' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
+                vpStatus === 'error' ? 'bg-red-500/10 text-red border-red-500/20' :
+                  'bg-surface2 text-muted border-border'
+            }`} title={vpStatus === 'live' ? 'Vedpragya live stream connected' : vpStatus}>
+            <span className={`w-1.5 h-1.5 rounded-full ${vpStatus === 'live' ? 'bg-green-400 animate-pulse' :
+                vpStatus === 'connecting' ? 'bg-yellow-400 animate-pulse' :
+                  vpStatus === 'error' ? 'bg-red' :
+                    'bg-muted'
+              }`} />
             {vpStatus === 'live' ? 'LIVE' : vpStatus === 'connecting' ? 'CONN…' : vpStatus === 'error' ? 'ERR' : '—'}
           </div>
         )}
@@ -603,9 +653,9 @@ export default function WatchlistPage() {
             ) : null}
             <span>{watchItems.length} script{watchItems.length > 1 ? 's' : ''} in watchlist</span>
             <button onClick={async () => {
-              try { await api.delete('/watchlist/clear'); } catch {}
+              try { await api.delete('/watchlist/clear'); } catch { }
               setWatchItems([]);
-              try { localStorage.removeItem(STORAGE_KEY); } catch {}
+              try { localStorage.removeItem(STORAGE_KEY); } catch { }
             }} className="hover:text-red underline">Clear all</button>
           </div>
         )}
