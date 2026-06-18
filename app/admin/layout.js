@@ -1,60 +1,163 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import ThemeToggle from '@/components/ThemeToggle';
 
-const NAV = [
-  { href: '/admin', label: 'Dashboard', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-  )},
-  { href: '/admin/students', label: 'Users & Roles', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-  )},
-  { href: '/admin/positions', label: 'Global Positions', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-  )},
-  { href: '/admin/orders', label: 'Live Orders', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-  )},
-  { href: '/admin/trades', label: 'All Trades', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-  )},
-  { href: '/admin/rejections', label: 'Rejection Logs', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-  )},
-  { href: '/admin/audit-logs', label: 'Audit Logs', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-  )},
-  { href: '/admin/ledgers', label: 'System Ledger', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
-  )},
-  { href: '/admin/risk-management', label: 'Risk Management', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-  )},
-  { href: '/admin/lot-master', label: 'Lot Master', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-  )},
-  { href: '/admin/indices-master', label: 'Indices Master', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M3 6h18M3 18h18"/><rect x="3" y="3" width="18" height="18" rx="1"/></svg>
-  )},
-  { href: '/admin/script-master', label: 'Script Master', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-  )},
-  { href: '/admin/ops', label: 'Ops & Revenue', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-  )},
-  { href: '/admin/market-data', label: 'Market Data', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-  )},
-  { href: '/admin/settings', label: 'Feature Flags', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-  )},
-  { href: '/admin/reports', label: 'Reports', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 3v6"/><path d="M8 15h4"/><path d="M8 18h8"/><path d="M8 12h6"/></svg>
-  )},
+/* ── Icon helpers ─────────────────────────────── */
+const Icon = ({ d, d2, extra = '' }) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={extra}>
+    {Array.isArray(d) ? d.map((p, i) => <path key={i} d={p} />) : <path d={d} />}
+    {d2 && <path d={d2} />}
+  </svg>
+);
+
+/* ── Nav structure matching screenshot ────────── */
+/* ── Full Admin Nav ─────────────────────────── */
+const NAV_SECTIONS = [
+  {
+    key: 'dashboard',
+    label: 'Dashboard',
+    href: '/admin',
+    exact: true,
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+    ),
+  },
+  {
+    key: 'trading',
+    label: 'Trading',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+    ),
+    children: [
+      { href: '/admin/watchlist',    label: 'Watchlist',              icon: '◎' },
+      { href: '/admin/trades',       label: 'Trades',                 icon: '◎' },
+      { href: '/admin/positions',    label: 'Portfolio/Position',     icon: '◎' },
+      { href: '/admin/risk-management', label: 'Banned/Blocked Scripts', icon: '◎' },
+      { href: '/admin/lot-master',   label: 'Max Quantity Details',   icon: '◎' },
+      { href: '/admin/ledgers',      label: 'Margin Management',      icon: '◎' },
+      { href: '/admin/reports',      label: 'Summary Report',         icon: '◎' },
+      { href: '/admin/rejections',   label: 'Summary Report V2',      icon: '◎' },
+    ],
+  },
+  {
+    key: 'users',
+    label: 'Users',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    ),
+    children: [
+      { href: '/admin/users',       label: 'User Listing',   icon: '◎' },
+      { href: '/admin/masters',     label: 'Master Listing', icon: '◎' },
+      { href: '/admin/brokers',     label: 'Broker Listing', icon: '◎' },
+      { href: '/admin/add-account', label: 'Add Account',    icon: '◎' },
+    ],
+  },
+  {
+    key: 'utilities',
+    label: 'Utilities',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+    ),
+    children: [
+      { href: '/admin/bulk-trading',     label: 'Bulk Trading',       icon: '◎' },
+      { href: '/admin/bill-filter',      label: 'Bill Filter',        icon: '◎' },
+      { href: '/admin/trade-edit-log',   label: 'Trade Edit/Del Log', icon: '◎' },
+      { href: '/admin/user-edit-log',    label: 'User Edit Log',      icon: '◎' },
+      { href: '/admin/ip-log',           label: 'IP Address Log',     icon: '◎' },
+      { href: '/admin/cash-edit-log',    label: 'Cash Edit/Del Log',  icon: '◎' },
+      { href: '/admin/auto-squareup-log',label: 'Auto SquareUp Log',  icon: '◎' },
+      { href: '/admin/cross-trade-log',  label: 'Cross Trade(s) Log', icon: '◎' },
+      { href: '/admin/rejection-log',    label: 'Rejection Log',      icon: '◎' },
+      { href: '/admin/script-master',    label: 'Script Master',      icon: '◎' },
+      { href: '/admin/indices-master',   label: 'Indices Master',     icon: '◎' },
+      { href: '/admin/market-data',      label: 'Market Data',        icon: '◎' },
+    ],
+  },
+  {
+    key: 'accounts',
+    label: 'Accounts',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>
+    ),
+    children: [
+      { href: '/admin/ledger',        label: 'Ledger',         icon: '◎' },
+      { href: '/admin/cash-ledger',   label: 'Cash Ledger',    icon: '◎' },
+      { href: '/admin/cash-entry',    label: 'Cash Entry',     icon: '◎' },
+      { href: '/admin/jv',            label: 'JV',             icon: '◎' },
+      { href: '/admin/trial-balance', label: 'Trial Balance',  icon: '◎' },
+      { href: '/admin/ops',           label: 'Ops & Revenue',  icon: '◎' },
+    ],
+
+  },
+  {
+    key: 'settings',
+    label: 'Settings',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    ),
+    children: [
+      { href: '/admin/settings/quantity',      label: 'Quantity Settings',   icon: '◎' },
+      { href: '/admin/settings/order-limit',   label: 'Order Limit',         icon: '◎' },
+      { href: '/admin/settings/block-scripts', label: 'Block/Allow Scripts', icon: '◎' },
+      { href: '/admin/settings/master-qty',    label: 'Master Qty Settings', icon: '◎' },
+      { href: '/admin/settings',               label: 'Feature Flags',       icon: '◎' },
+    ],
+
+  },
+];
+
+/* ── Non-Admin Nav (master / broker) ─────────── */
+const NAV_SECTIONS_NON_ADMIN = [
+  {
+    key: 'dashboard',
+    label: 'Dashboard',
+    href: '/admin',
+    exact: true,
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+    ),
+  },
+  {
+    key: 'trading',
+    label: 'Trading',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+    ),
+    children: [
+      { href: '/admin/watchlist',       label: 'Watchlist',              icon: '◎' },
+      { href: '/admin/trades',          label: 'Trades',                 icon: '◎' },
+      { href: '/admin/positions',       label: 'Portfolio/Position',     icon: '◎' },
+      { href: '/admin/risk-management', label: 'Banned/Blocked Scripts', icon: '◎' },
+      { href: '/admin/lot-master',      label: 'Max Quantity Details',   icon: '◎' },
+    ],
+  },
 ];
 
 export default function AdminLayout({ children }) {
@@ -62,77 +165,273 @@ export default function AdminLayout({ children }) {
   const pathname = usePathname();
   const { token, user, loading, logout } = useAuth();
 
+  /* which group is open */
+  const getInitialOpen = () => {
+    for (const s of NAV_SECTIONS) {
+      if (s.children?.some((c) => pathname.startsWith(c.href))) return s.key;
+    }
+    return 'trading';
+  };
+  const [open, setOpen] = useState(getInitialOpen);
+
+  const isAdmin   = user?.role === 'admin';
+  const isMaster  = user?.role === 'master';
+  const isBroker  = user?.role === 'broker';
+  const hasAccess = isAdmin || isMaster || isBroker;
+
+  /* Redirect: unauthenticated → login, regular user → trading view */
   useEffect(() => {
     if (loading) return;
     if (!token) router.replace('/login');
-    else if (user && user.role !== 'admin') router.replace('/watchlist');
-  }, [token, user, loading, router]);
+    else if (user && !hasAccess) router.replace('/watchlist'); // normal user
+  }, [token, user, loading, router, hasAccess]);
 
-  if (loading || !token || user?.role !== 'admin') {
-    return <div className="min-h-screen flex items-center justify-center text-muted">Loading…</div>;
+  if (loading || !token || !hasAccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'rgb(var(--bg))' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: 12,
+            background: 'linear-gradient(135deg, rgb(var(--brand)), rgb(var(--brand-2)))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'pulse 1.5s ease-in-out infinite'
+          }}>
+            <span style={{ color: '#fff', fontWeight: 800, fontSize: 22, fontFamily: 'var(--font-heading)' }}>A</span>
+          </div>
+          <span style={{ color: 'rgb(var(--muted))', fontSize: 13 }}>Loading…</span>
+        </div>
+      </div>
+    );
   }
 
+  /* Choose nav based on role */
+  const activeNav = isAdmin ? NAV_SECTIONS : NAV_SECTIONS_NON_ADMIN;
+
   const onLogout = () => { logout(); router.replace('/login'); };
+  const toggle = (key) => setOpen((prev) => (prev === key ? null : key));
+
+  const isActive = (href, exact) =>
+    exact ? pathname === href : pathname.startsWith(href);
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg">
-      <header className="h-16 bg-surface border-b border-border flex items-center px-4 gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-md flex items-center justify-center bg-gradient-to-br from-brand to-brand-2">
-            <span className="heading font-bold text-white text-lg">A</span>
+    <div className="min-h-screen flex flex-col" style={{ background: 'rgb(var(--bg))' }}>
+      {/* ── TOP HEADER ── */}
+      <header style={{
+        height: 56,
+        background: 'rgb(var(--surface))',
+        borderBottom: '1px solid rgb(var(--border))',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 16px',
+        gap: 12,
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+      }}>
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{
+            width: 34, height: 34, borderRadius: 8,
+            background: 'linear-gradient(135deg, rgb(var(--brand)), rgb(var(--brand-2)))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <span style={{ color: '#fff', fontWeight: 800, fontSize: 18, fontFamily: 'var(--font-heading)' }}>A</span>
           </div>
           <div>
-            <div className="heading text-xl font-bold tracking-tight bg-gradient-to-br from-brand-2 to-brand bg-clip-text text-transparent">
-              AVADH15
-            </div>
-            <div className="text-[10px] uppercase tracking-widest text-muted -mt-1">Admin Panel</div>
+            <div style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: 18,
+              fontWeight: 800,
+              letterSpacing: '-0.02em',
+              background: 'linear-gradient(135deg, rgb(var(--brand-2)), rgb(var(--brand)))',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}>AVADH11</div>
+            <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgb(var(--muted))', marginTop: -2 }}>{isAdmin ? 'Admin Panel' : isMaster ? 'Master Panel' : 'Broker Panel'}</div>
           </div>
         </div>
 
-        <div className="flex-1" />
+        <div style={{ flex: 1 }} />
 
         <ThemeToggle />
 
-        <Link href="/watchlist" className="btn-ghost text-xs py-1.5 px-3" title="Open trading view">
+        <Link href="/watchlist" style={{
+          padding: '6px 12px', borderRadius: 6, border: '1px solid rgb(var(--border))',
+          fontSize: 12, color: 'rgb(var(--fg))', textDecoration: 'none',
+          transition: 'background 150ms',
+        }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgb(var(--surface2))'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
           Trading View →
         </Link>
 
-        <div className="flex items-center gap-2 pl-3 border-l border-border">
-          <div className="w-8 h-8 rounded-full bg-surface2 border border-border flex items-center justify-center text-sm font-semibold">
+        {/* User chip */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          paddingLeft: 12, borderLeft: '1px solid rgb(var(--border))',
+        }}>
+          <div style={{
+            width: 30, height: 30, borderRadius: '50%',
+            background: 'linear-gradient(135deg, rgb(var(--brand)), rgb(var(--brand-2)))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 13, fontWeight: 700, color: '#fff',
+          }}>
             {(user.full_name || user.username).charAt(0).toUpperCase()}
           </div>
-          <div className="hidden sm:block">
-            <div className="text-sm font-semibold leading-tight">{user.full_name || user.username}</div>
-            <div className="text-[10px] text-muted uppercase">{user.role}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(var(--fg))', lineHeight: 1 }}>{user.full_name || user.username}</div>
+            <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgb(var(--muted))', lineHeight: 1 }}>{user.role}</div>
           </div>
-          <button onClick={onLogout} className="btn-ghost py-1.5 px-3 text-xs ml-2 text-red border-red/30 hover:bg-red/10">Logout</button>
+          <button onClick={onLogout} style={{
+            padding: '4px 10px', borderRadius: 6,
+            border: '1px solid rgba(239,68,68,0.3)',
+            fontSize: 11, fontWeight: 600, color: 'rgb(var(--red))',
+            background: 'transparent', cursor: 'pointer',
+            transition: 'background 150ms',
+          }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >Logout</button>
         </div>
       </header>
 
-      <div className="flex flex-1 min-h-0">
-        <aside className="w-56 shrink-0 bg-surface border-r border-border p-3">
-          <div className="text-[10px] uppercase tracking-widest text-muted px-2 mb-2 font-semibold">Manage</div>
-          <ul className="space-y-1">
-            {NAV.map((n) => {
-              const active = pathname === n.href;
-              return (
-                <li key={n.href}>
-                  <Link
-                    href={n.href}
-                    className={`flex items-center gap-3 px-3 py-2 rounded text-sm transition-colors ${
-                      active ? 'bg-brand/15 text-brand-2 border-l-2 border-brand pl-2' : 'text-fg/80 hover:bg-surface2'
-                    }`}
-                  >
-                    <span className={active ? 'text-brand-2' : 'text-muted'}>{n.icon}</span>
-                    {n.label}
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+        {/* ── SIDEBAR ── */}
+        <aside style={{
+          width: 200,
+          flexShrink: 0,
+          background: 'rgb(var(--surface))',
+          borderRight: '1px solid rgb(var(--border))',
+          display: 'flex',
+          flexDirection: 'column',
+          overflowY: 'auto',
+        }}>
+          {/* Logo area inside sidebar */}
+          <div style={{ padding: '12px 12px 8px' }}>
+            <div style={{
+              fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em',
+              color: 'rgb(var(--muted))', fontWeight: 600, paddingLeft: 4,
+            }}>Navigation</div>
+          </div>
+
+          <nav style={{ flex: 1, padding: '0 8px 8px' }}>
+            {activeNav.map((section) => {
+              if (!section.children) {
+                /* Single link (Dashboard) */
+                const active = isActive(section.href, section.exact);
+                return (
+                  <Link key={section.key} href={section.href} style={{ textDecoration: 'none' }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '8px 10px', borderRadius: 7, marginBottom: 2,
+                      background: active ? 'rgba(var(--brand), 0.12)' : 'transparent',
+                      borderLeft: active ? '2px solid rgb(var(--brand))' : '2px solid transparent',
+                      cursor: 'pointer', transition: 'all 150ms',
+                    }}
+                      onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgb(var(--surface2))'; }}
+                      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <span style={{ color: active ? 'rgb(var(--brand-2))' : 'rgb(var(--muted))' }}>{section.icon}</span>
+                      <span style={{
+                        fontSize: 13, fontWeight: active ? 600 : 500,
+                        color: active ? 'rgb(var(--brand-2))' : 'rgb(var(--fg))',
+                      }}>{section.label}</span>
+                    </div>
                   </Link>
-                </li>
+                );
+              }
+
+              /* Collapsible group */
+              const isGroupActive = section.children.some((c) => pathname.startsWith(c.href));
+              const isOpen = open === section.key;
+
+              return (
+                <div key={section.key} style={{ marginBottom: 2 }}>
+                  <button
+                    onClick={() => toggle(section.key)}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '8px 10px', borderRadius: 7,
+                      background: isGroupActive ? 'rgb(var(--surface2))' : 'transparent',
+                      border: 'none', cursor: 'pointer', transition: 'background 150ms',
+                    }}
+                    onMouseEnter={e => { if (!isGroupActive) e.currentTarget.style.background = 'rgb(var(--surface2))'; }}
+                    onMouseLeave={e => { if (!isGroupActive) e.currentTarget.style.background = isGroupActive ? 'rgb(var(--surface2))' : 'transparent'; }}
+                  >
+                    <span style={{ color: isGroupActive ? 'rgb(var(--warn))' : 'rgb(var(--muted))' }}>{section.icon}</span>
+                    <span style={{
+                      flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 600,
+                      color: 'rgb(var(--fg))',
+                    }}>{section.label}</span>
+                    <svg
+                      width="12" height="12" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="2.5"
+                      style={{ color: 'rgb(var(--muted))', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 200ms' }}
+                    >
+                      <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                  </button>
+
+                  {isOpen && (
+                    <ul style={{ listStyle: 'none', padding: '2px 0 4px 14px', margin: 0, borderLeft: '1px solid rgb(var(--border))', marginLeft: 18 }}>
+                      {section.children.map((child) => {
+                        const childActive = pathname === child.href || pathname.startsWith(child.href + '/');
+                        return (
+                          <li key={child.href}>
+                            <Link href={child.href} style={{ textDecoration: 'none' }}>
+                              <div style={{
+                                display: 'flex', alignItems: 'center', gap: 8,
+                                padding: '6px 8px', borderRadius: 6, margin: '1px 0',
+                                background: childActive ? 'rgba(var(--brand), 0.1)' : 'transparent',
+                                cursor: 'pointer', transition: 'all 150ms',
+                              }}
+                                onMouseEnter={e => { if (!childActive) e.currentTarget.style.background = 'rgb(var(--surface2))'; }}
+                                onMouseLeave={e => { if (!childActive) e.currentTarget.style.background = childActive ? 'rgba(var(--brand), 0.1)' : 'transparent'; }}
+                              >
+                                <span style={{
+                                  fontSize: 7, color: childActive ? 'rgb(var(--warn))' : 'rgb(var(--muted))',
+                                }}>◉</span>
+                                <span style={{
+                                  fontSize: 12, color: childActive ? 'rgb(var(--warn))' : 'rgb(var(--fg) / 0.75)',
+                                  fontWeight: childActive ? 600 : 400,
+                                }}>{child.label}</span>
+                              </div>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
               );
             })}
-          </ul>
+          </nav>
+
+          {/* Logout */}
+          <div style={{ padding: '8px', borderTop: '1px solid rgb(var(--border))' }}>
+            <button onClick={onLogout} style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+              padding: '8px 10px', borderRadius: 7, border: 'none', cursor: 'pointer',
+              background: 'transparent', color: 'rgb(var(--red))',
+              fontSize: 13, fontWeight: 600, transition: 'background 150ms',
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              Logout
+            </button>
+          </div>
         </aside>
 
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        {/* ── MAIN CONTENT ── */}
+        <main style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+          {children}
+        </main>
       </div>
     </div>
   );

@@ -35,7 +35,7 @@ export default function IndexTickers() {
   if (!items.length) return <div className="flex-1" />;
 
   return (
-    <div className="flex items-center gap-4 px-3">
+    <div className="flex items-center gap-4 px-3 overflow-hidden min-w-0">
       {items.map(({ label, fullName, ltp, change, pct, live }) => {
         const up = (change ?? 0) >= 0;
         return (

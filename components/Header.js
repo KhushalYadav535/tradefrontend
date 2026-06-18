@@ -91,9 +91,9 @@ export default function Header({ onToggleSidebar }) {
 
         <IndexTickers />
 
-        <div className="flex-1" />
+        <div className="flex-1 min-w-0" />
 
-        <div className="hidden lg:flex items-center gap-3 text-xs">
+        <div className="hidden lg:flex items-center gap-3 text-xs shrink-0">
           <div className="px-3 py-1.5 rounded bg-surface2 border border-border">
             <span className="text-[10px] uppercase text-muted mr-1">Bal</span>
             <span className="price text-accent">₹{fmt(user?.balance)}</span>
@@ -106,13 +106,14 @@ export default function Header({ onToggleSidebar }) {
 
         <button
           onClick={() => setContactOpen(true)}
-          className="hidden md:flex flex-col items-center justify-center px-4 py-1.5 rounded bg-red text-white text-xs font-bold leading-tight hover:bg-red/90"
+          className="hidden md:flex flex-col items-center justify-center px-4 py-1.5 rounded bg-red text-white text-xs font-bold leading-tight hover:bg-red/90 shrink-0"
         >
           <span>CONTACT</span>
           <span>UPLINE</span>
         </button>
 
-        <div className="flex items-center gap-1 ml-2">
+        {/* Right-side icon group — shrink-0 so these NEVER get pushed off screen */}
+        <div className="flex items-center gap-1 ml-1 shrink-0">
           <ThemeToggle />
 
           {/* Bell */}
