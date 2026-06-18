@@ -7,7 +7,6 @@ import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import Disclaimer from '@/components/Disclaimer';
 
-import MobileTabBar from '@/components/MobileTabBar';
 
 export default function TradingLayout({ children }) {
   const router = useRouter();
@@ -96,11 +95,10 @@ export default function TradingLayout({ children }) {
         `}>
           <Sidebar collapsed={!isMobile && collapsed} onClose={() => setSidebarOpen(false)} />
         </div>
-        <main className="flex-1 overflow-y-auto p-3 md:p-4 w-full pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-4">
+        <main className="flex-1 overflow-y-auto p-3 md:p-4 w-full">
           {children}
         </main>
       </div>
-      <MobileTabBar onOpenMenu={() => setSidebarOpen(true)} />
     </div>
   );
 }
