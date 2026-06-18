@@ -165,6 +165,9 @@ export default function AdminLayout({ children }) {
   const pathname = usePathname();
   const { token, user, loading, logout } = useAuth();
 
+  /* Mobile sidebar state */
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   /* which group is open */
   const getInitialOpen = () => {
     for (const s of NAV_SECTIONS) {
@@ -178,6 +181,11 @@ export default function AdminLayout({ children }) {
   const isMaster  = user?.role === 'master';
   const isBroker  = user?.role === 'broker';
   const hasAccess = isAdmin || isMaster || isBroker;
+
+  /* Close sidebar when route changes */
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   /* Redirect: unauthenticated → login, regular user → trading view */
   useEffect(() => {
@@ -213,6 +221,133 @@ export default function AdminLayout({ children }) {
   const isActive = (href, exact) =>
     exact ? pathname === href : pathname.startsWith(href);
 
+  /* ── Sidebar content (shared between desktop and mobile drawer) ── */
+  const SidebarContent = () => (
+    <>
+      {/* Navigation label */}
+      <div style={{ padding: '12px 12px 8px' }}>
+        <div style={{
+          fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em',
+          color: 'rgb(var(--muted))', fontWeight: 600, paddingLeft: 4,
+        }}>Navigation</div>
+      </div>
+
+      <nav style={{ flex: 1, padding: '0 8px 8px', overflowY: 'auto' }}>
+        {activeNav.map((section) => {
+          if (!section.children) {
+            /* Single link (Dashboard) */
+            const active = isActive(section.href, section.exact);
+            return (
+              <Link key={section.key} href={section.href} style={{ textDecoration: 'none' }}
+                onClick={() => setSidebarOpen(false)}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 10px', borderRadius: 7, marginBottom: 2,
+                  background: active ? 'rgba(var(--brand), 0.12)' : 'transparent',
+                  borderLeft: active ? '2px solid rgb(var(--brand))' : '2px solid transparent',
+                  cursor: 'pointer', transition: 'all 150ms',
+                }}
+                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgb(var(--surface2))'; }}
+                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <span style={{ color: active ? 'rgb(var(--brand-2))' : 'rgb(var(--muted))' }}>{section.icon}</span>
+                  <span style={{
+                    fontSize: 13, fontWeight: active ? 600 : 500,
+                    color: active ? 'rgb(var(--brand-2))' : 'rgb(var(--fg))',
+                  }}>{section.label}</span>
+                </div>
+              </Link>
+            );
+          }
+
+          /* Collapsible group */
+          const isGroupActive = section.children.some((c) => pathname.startsWith(c.href));
+          const isOpen = open === section.key;
+
+          return (
+            <div key={section.key} style={{ marginBottom: 2 }}>
+              <button
+                onClick={() => toggle(section.key)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 10px', borderRadius: 7,
+                  background: isGroupActive ? 'rgb(var(--surface2))' : 'transparent',
+                  border: 'none', cursor: 'pointer', transition: 'background 150ms',
+                }}
+                onMouseEnter={e => { if (!isGroupActive) e.currentTarget.style.background = 'rgb(var(--surface2))'; }}
+                onMouseLeave={e => { if (!isGroupActive) e.currentTarget.style.background = isGroupActive ? 'rgb(var(--surface2))' : 'transparent'; }}
+              >
+                <span style={{ color: isGroupActive ? 'rgb(var(--warn))' : 'rgb(var(--muted))' }}>{section.icon}</span>
+                <span style={{
+                  flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 600,
+                  color: 'rgb(var(--fg))',
+                }}>{section.label}</span>
+                <svg
+                  width="12" height="12" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2.5"
+                  style={{ color: 'rgb(var(--muted))', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 200ms' }}
+                >
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </button>
+
+              {isOpen && (
+                <ul style={{ listStyle: 'none', padding: '2px 0 4px 14px', margin: 0, borderLeft: '1px solid rgb(var(--border))', marginLeft: 18 }}>
+                  {section.children.map((child) => {
+                    const childActive = pathname === child.href || pathname.startsWith(child.href + '/');
+                    return (
+                      <li key={child.href}>
+                        <Link href={child.href} style={{ textDecoration: 'none' }}
+                          onClick={() => setSidebarOpen(false)}>
+                          <div style={{
+                            display: 'flex', alignItems: 'center', gap: 8,
+                            padding: '6px 8px', borderRadius: 6, margin: '1px 0',
+                            background: childActive ? 'rgba(var(--brand), 0.1)' : 'transparent',
+                            cursor: 'pointer', transition: 'all 150ms',
+                          }}
+                            onMouseEnter={e => { if (!childActive) e.currentTarget.style.background = 'rgb(var(--surface2))'; }}
+                            onMouseLeave={e => { if (!childActive) e.currentTarget.style.background = childActive ? 'rgba(var(--brand), 0.1)' : 'transparent'; }}
+                          >
+                            <span style={{
+                              fontSize: 7, color: childActive ? 'rgb(var(--warn))' : 'rgb(var(--muted))',
+                            }}>◉</span>
+                            <span style={{
+                              fontSize: 12, color: childActive ? 'rgb(var(--warn))' : 'rgb(var(--fg) / 0.75)',
+                              fontWeight: childActive ? 600 : 400,
+                            }}>{child.label}</span>
+                          </div>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          );
+        })}
+      </nav>
+
+      {/* Logout */}
+      <div style={{ padding: '8px', borderTop: '1px solid rgb(var(--border))' }}>
+        <button onClick={onLogout} style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+          padding: '8px 10px', borderRadius: 7, border: 'none', cursor: 'pointer',
+          background: 'transparent', color: 'rgb(var(--red))',
+          fontSize: 13, fontWeight: 600, transition: 'background 150ms',
+        }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          Logout
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'rgb(var(--bg))' }}>
       {/* ── TOP HEADER ── */}
@@ -222,14 +357,41 @@ export default function AdminLayout({ children }) {
         borderBottom: '1px solid rgb(var(--border))',
         display: 'flex',
         alignItems: 'center',
-        padding: '0 16px',
-        gap: 12,
+        padding: '0 12px',
+        gap: 10,
         position: 'sticky',
         top: 0,
         zIndex: 50,
       }}>
+        {/* Hamburger button — visible only on mobile */}
+        <button
+          onClick={() => setSidebarOpen((v) => !v)}
+          aria-label="Toggle menu"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 36,
+            height: 36,
+            borderRadius: 8,
+            border: 'none',
+            background: 'transparent',
+            color: 'rgb(var(--muted))',
+            cursor: 'pointer',
+            flexShrink: 0,
+            transition: 'background 150ms, color 150ms',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgb(var(--surface2))'; e.currentTarget.style.color = 'rgb(var(--fg))'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgb(var(--muted))'; }}
+          className="lg:hidden"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
           <div style={{
             width: 34, height: 34, borderRadius: 8,
             background: 'linear-gradient(135deg, rgb(var(--brand)), rgb(var(--brand-2)))',
@@ -237,58 +399,61 @@ export default function AdminLayout({ children }) {
           }}>
             <span style={{ color: '#fff', fontWeight: 800, fontSize: 18, fontFamily: 'var(--font-heading)' }}>A</span>
           </div>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <div style={{
               fontFamily: 'var(--font-heading)',
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: 800,
               letterSpacing: '-0.02em',
               background: 'linear-gradient(135deg, rgb(var(--brand-2)), rgb(var(--brand)))',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
+              whiteSpace: 'nowrap',
             }}>AVADH11</div>
-            <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgb(var(--muted))', marginTop: -2 }}>{isAdmin ? 'Admin Panel' : isMaster ? 'Master Panel' : 'Broker Panel'}</div>
+            <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgb(var(--muted))', marginTop: -2, whiteSpace: 'nowrap' }}>
+              {isAdmin ? 'Admin Panel' : isMaster ? 'Master Panel' : 'Broker Panel'}
+            </div>
           </div>
         </div>
-
-        <div style={{ flex: 1 }} />
 
         <ThemeToggle />
 
         <Link href="/watchlist" style={{
-          padding: '6px 12px', borderRadius: 6, border: '1px solid rgb(var(--border))',
-          fontSize: 12, color: 'rgb(var(--fg))', textDecoration: 'none',
-          transition: 'background 150ms',
+          padding: '5px 10px', borderRadius: 6, border: '1px solid rgb(var(--border))',
+          fontSize: 11, color: 'rgb(var(--fg))', textDecoration: 'none',
+          transition: 'background 150ms', whiteSpace: 'nowrap', flexShrink: 0,
         }}
           onMouseEnter={e => e.currentTarget.style.background = 'rgb(var(--surface2))'}
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          className="hidden sm:inline-flex items-center"
         >
-          Trading View →
+          Trading →
         </Link>
 
         {/* User chip */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          paddingLeft: 12, borderLeft: '1px solid rgb(var(--border))',
+          display: 'flex', alignItems: 'center', gap: 6,
+          paddingLeft: 10, borderLeft: '1px solid rgb(var(--border))',
+          flexShrink: 0,
         }}>
           <div style={{
             width: 30, height: 30, borderRadius: '50%',
             background: 'linear-gradient(135deg, rgb(var(--brand)), rgb(var(--brand-2)))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 13, fontWeight: 700, color: '#fff',
+            fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0,
           }}>
             {(user.full_name || user.username).charAt(0).toUpperCase()}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }} className="hidden sm:flex">
             <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(var(--fg))', lineHeight: 1 }}>{user.full_name || user.username}</div>
             <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgb(var(--muted))', lineHeight: 1 }}>{user.role}</div>
           </div>
           <button onClick={onLogout} style={{
-            padding: '4px 10px', borderRadius: 6,
+            padding: '4px 8px', borderRadius: 6,
             border: '1px solid rgba(239,68,68,0.3)',
             fontSize: 11, fontWeight: 600, color: 'rgb(var(--red))',
             background: 'transparent', cursor: 'pointer',
-            transition: 'background 150ms',
+            transition: 'background 150ms', whiteSpace: 'nowrap',
           }}
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
@@ -296,8 +461,23 @@ export default function AdminLayout({ children }) {
         </div>
       </header>
 
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
+        {/* ── MOBILE OVERLAY ── */}
+        {sidebarOpen && (
+          <div
+            onClick={() => setSidebarOpen(false)}
+            style={{
+              position: 'fixed', inset: 0,
+              background: 'rgba(0,0,0,0.6)',
+              backdropFilter: 'blur(2px)',
+              zIndex: 40,
+            }}
+            className="lg:hidden"
+          />
+        )}
+
         {/* ── SIDEBAR ── */}
+        {/* Desktop: always visible. Mobile: slide-in drawer */}
         <aside style={{
           width: 200,
           flexShrink: 0,
@@ -306,130 +486,39 @@ export default function AdminLayout({ children }) {
           display: 'flex',
           flexDirection: 'column',
           overflowY: 'auto',
-        }}>
-          {/* Logo area inside sidebar */}
-          <div style={{ padding: '12px 12px 8px' }}>
-            <div style={{
-              fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em',
-              color: 'rgb(var(--muted))', fontWeight: 600, paddingLeft: 4,
-            }}>Navigation</div>
-          </div>
+          // Mobile: fixed drawer
+          position: undefined,
+        }}
+          className="hidden lg:flex"
+        >
+          <SidebarContent />
+        </aside>
 
-          <nav style={{ flex: 1, padding: '0 8px 8px' }}>
-            {activeNav.map((section) => {
-              if (!section.children) {
-                /* Single link (Dashboard) */
-                const active = isActive(section.href, section.exact);
-                return (
-                  <Link key={section.key} href={section.href} style={{ textDecoration: 'none' }}>
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '8px 10px', borderRadius: 7, marginBottom: 2,
-                      background: active ? 'rgba(var(--brand), 0.12)' : 'transparent',
-                      borderLeft: active ? '2px solid rgb(var(--brand))' : '2px solid transparent',
-                      cursor: 'pointer', transition: 'all 150ms',
-                    }}
-                      onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgb(var(--surface2))'; }}
-                      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
-                    >
-                      <span style={{ color: active ? 'rgb(var(--brand-2))' : 'rgb(var(--muted))' }}>{section.icon}</span>
-                      <span style={{
-                        fontSize: 13, fontWeight: active ? 600 : 500,
-                        color: active ? 'rgb(var(--brand-2))' : 'rgb(var(--fg))',
-                      }}>{section.label}</span>
-                    </div>
-                  </Link>
-                );
-              }
-
-              /* Collapsible group */
-              const isGroupActive = section.children.some((c) => pathname.startsWith(c.href));
-              const isOpen = open === section.key;
-
-              return (
-                <div key={section.key} style={{ marginBottom: 2 }}>
-                  <button
-                    onClick={() => toggle(section.key)}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '8px 10px', borderRadius: 7,
-                      background: isGroupActive ? 'rgb(var(--surface2))' : 'transparent',
-                      border: 'none', cursor: 'pointer', transition: 'background 150ms',
-                    }}
-                    onMouseEnter={e => { if (!isGroupActive) e.currentTarget.style.background = 'rgb(var(--surface2))'; }}
-                    onMouseLeave={e => { if (!isGroupActive) e.currentTarget.style.background = isGroupActive ? 'rgb(var(--surface2))' : 'transparent'; }}
-                  >
-                    <span style={{ color: isGroupActive ? 'rgb(var(--warn))' : 'rgb(var(--muted))' }}>{section.icon}</span>
-                    <span style={{
-                      flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 600,
-                      color: 'rgb(var(--fg))',
-                    }}>{section.label}</span>
-                    <svg
-                      width="12" height="12" viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" strokeWidth="2.5"
-                      style={{ color: 'rgb(var(--muted))', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 200ms' }}
-                    >
-                      <polyline points="9 18 15 12 9 6"/>
-                    </svg>
-                  </button>
-
-                  {isOpen && (
-                    <ul style={{ listStyle: 'none', padding: '2px 0 4px 14px', margin: 0, borderLeft: '1px solid rgb(var(--border))', marginLeft: 18 }}>
-                      {section.children.map((child) => {
-                        const childActive = pathname === child.href || pathname.startsWith(child.href + '/');
-                        return (
-                          <li key={child.href}>
-                            <Link href={child.href} style={{ textDecoration: 'none' }}>
-                              <div style={{
-                                display: 'flex', alignItems: 'center', gap: 8,
-                                padding: '6px 8px', borderRadius: 6, margin: '1px 0',
-                                background: childActive ? 'rgba(var(--brand), 0.1)' : 'transparent',
-                                cursor: 'pointer', transition: 'all 150ms',
-                              }}
-                                onMouseEnter={e => { if (!childActive) e.currentTarget.style.background = 'rgb(var(--surface2))'; }}
-                                onMouseLeave={e => { if (!childActive) e.currentTarget.style.background = childActive ? 'rgba(var(--brand), 0.1)' : 'transparent'; }}
-                              >
-                                <span style={{
-                                  fontSize: 7, color: childActive ? 'rgb(var(--warn))' : 'rgb(var(--muted))',
-                                }}>◉</span>
-                                <span style={{
-                                  fontSize: 12, color: childActive ? 'rgb(var(--warn))' : 'rgb(var(--fg) / 0.75)',
-                                  fontWeight: childActive ? 600 : 400,
-                                }}>{child.label}</span>
-                              </div>
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
-
-          {/* Logout */}
-          <div style={{ padding: '8px', borderTop: '1px solid rgb(var(--border))' }}>
-            <button onClick={onLogout} style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-              padding: '8px 10px', borderRadius: 7, border: 'none', cursor: 'pointer',
-              background: 'transparent', color: 'rgb(var(--red))',
-              fontSize: 13, fontWeight: 600, transition: 'background 150ms',
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-              </svg>
-              Logout
-            </button>
-          </div>
+        {/* Mobile sidebar drawer */}
+        <aside
+          style={{
+            width: 240,
+            background: 'rgb(var(--surface))',
+            borderRight: '1px solid rgb(var(--border))',
+            display: 'flex',
+            flexDirection: 'column',
+            overflowY: 'auto',
+            position: 'fixed',
+            top: 56,
+            left: 0,
+            bottom: 0,
+            zIndex: 45,
+            transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+            transition: 'transform 280ms cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: sidebarOpen ? '4px 0 24px rgba(0,0,0,0.3)' : 'none',
+          }}
+          className="lg:hidden"
+        >
+          <SidebarContent />
         </aside>
 
         {/* ── MAIN CONTENT ── */}
-        <main style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+        <main style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
           {children}
         </main>
       </div>

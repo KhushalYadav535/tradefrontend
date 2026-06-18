@@ -85,7 +85,7 @@ function buildSections(role) {
 }
 
 /* ─── Collapsed icon sidebar ─────────────────── */
-function CollapsedSidebar({ sections, onLogout }) {
+function CollapsedSidebar({ sections, onLogout, onClose }) {
   return (
     <aside style={{
       width: 52, flexShrink: 0,
@@ -95,7 +95,7 @@ function CollapsedSidebar({ sections, onLogout }) {
     }}>
       <nav style={{ flex: 1, padding: '8px 6px', display: 'flex', flexDirection: 'column', gap: 4 }}>
         {sections.map((s) => (
-          <Link key={s.key} href={s.items[0].href} title={s.title} style={{ textDecoration: 'none' }}>
+          <Link key={s.key} href={s.items[0].href} title={s.title} style={{ textDecoration: 'none' }} onClick={onClose}>
             <div style={{
               width: 40, height: 40, borderRadius: 8,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -133,7 +133,7 @@ function CollapsedSidebar({ sections, onLogout }) {
 
 
 /* ─── Full sidebar ───────────────────────────── */
-export default function Sidebar({ collapsed }) {
+export default function Sidebar({ collapsed, onClose }) {
   const pathname = usePathname();
   const router = useRouter();
   const { logout, user } = useAuth();
@@ -152,7 +152,7 @@ export default function Sidebar({ collapsed }) {
   const onLogout = () => { logout(); router.replace('/login'); };
 
   if (collapsed) {
-    return <CollapsedSidebar sections={sections} onLogout={onLogout} />;
+    return <CollapsedSidebar sections={sections} onLogout={onLogout} onClose={onClose} />;
   }
 
   return (
@@ -216,7 +216,7 @@ export default function Sidebar({ collapsed }) {
                     const active = pathname === item.href;
                     return (
                       <li key={item.href}>
-                        <Link href={item.href} style={{ textDecoration: 'none' }}>
+                        <Link href={item.href} style={{ textDecoration: 'none' }} onClick={onClose}>
                           <div style={{
                             display: 'flex', alignItems: 'center', gap: 8,
                             padding: '6px 8px', borderRadius: 6, margin: '1px 0',

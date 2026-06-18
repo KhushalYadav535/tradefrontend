@@ -94,7 +94,7 @@ export default function TradingLayout({ children }) {
             : `${collapsed ? 'w-14' : 'w-60'} translate-x-0`
           }
         `}>
-          <Sidebar collapsed={!isMobile && collapsed} />
+          <Sidebar collapsed={!isMobile && collapsed} onClose={() => setSidebarOpen(false)} />
         </div>
         <main className="flex-1 overflow-y-auto p-3 md:p-4 w-full pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-4">
           {children}
