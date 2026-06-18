@@ -80,7 +80,7 @@ export default function TradingLayout({ children }) {
         {/* Mobile overlay */}
         {isMobile && sidebarOpen && (
           <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden" 
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', zIndex: 40 }}
             onClick={() => setSidebarOpen(false)}
           />
         )}

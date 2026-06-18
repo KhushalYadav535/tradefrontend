@@ -167,6 +167,14 @@ export default function AdminLayout({ children }) {
 
   /* Mobile sidebar state */
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 1024);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   /* which group is open */
   const getInitialOpen = () => {
@@ -364,31 +372,32 @@ export default function AdminLayout({ children }) {
         zIndex: 50,
       }}>
         {/* Hamburger button — visible only on mobile */}
-        <button
-          onClick={() => setSidebarOpen((v) => !v)}
-          aria-label="Toggle menu"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 36,
-            height: 36,
-            borderRadius: 8,
-            border: 'none',
-            background: 'transparent',
-            color: 'rgb(var(--muted))',
-            cursor: 'pointer',
-            flexShrink: 0,
-            transition: 'background 150ms, color 150ms',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgb(var(--surface2))'; e.currentTarget.style.color = 'rgb(var(--fg))'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgb(var(--muted))'; }}
-          className="lg:hidden"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
-        </button>
+        {isMobile && (
+          <button
+            onClick={() => setSidebarOpen((v) => !v)}
+            aria-label="Toggle menu"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              border: 'none',
+              background: 'transparent',
+              color: 'rgb(var(--muted))',
+              cursor: 'pointer',
+              flexShrink: 0,
+              transition: 'background 150ms, color 150ms',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgb(var(--surface2))'; e.currentTarget.style.color = 'rgb(var(--fg))'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgb(var(--muted))'; }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+        )}
 
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
@@ -422,10 +431,10 @@ export default function AdminLayout({ children }) {
           padding: '5px 10px', borderRadius: 6, border: '1px solid rgb(var(--border))',
           fontSize: 11, color: 'rgb(var(--fg))', textDecoration: 'none',
           transition: 'background 150ms', whiteSpace: 'nowrap', flexShrink: 0,
+          display: isMobile ? 'none' : 'inline-flex', alignItems: 'center',
         }}
           onMouseEnter={e => e.currentTarget.style.background = 'rgb(var(--surface2))'}
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-          className="hidden sm:inline-flex items-center"
         >
           Trading →
         </Link>
@@ -444,7 +453,7 @@ export default function AdminLayout({ children }) {
           }}>
             {(user.full_name || user.username).charAt(0).toUpperCase()}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }} className="hidden sm:flex">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, ...(isMobile ? { display: 'none' } : {}) }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(var(--fg))', lineHeight: 1 }}>{user.full_name || user.username}</div>
             <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgb(var(--muted))', lineHeight: 1 }}>{user.role}</div>
           </div>
@@ -463,59 +472,102 @@ export default function AdminLayout({ children }) {
 
       <div style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
         {/* ── MOBILE OVERLAY ── */}
-        {sidebarOpen && (
+        {isMobile && sidebarOpen && (
           <div
             onClick={() => setSidebarOpen(false)}
             style={{
-              position: 'fixed', inset: 0,
-              background: 'rgba(0,0,0,0.6)',
-              backdropFilter: 'blur(2px)',
-              zIndex: 40,
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.65)',
+              backdropFilter: 'blur(3px)',
+              WebkitBackdropFilter: 'blur(3px)',
+              zIndex: 44,
             }}
-            className="lg:hidden"
           />
         )}
 
         {/* ── SIDEBAR ── */}
-        {/* Desktop: always visible. Mobile: slide-in drawer */}
-        <aside style={{
-          width: 200,
-          flexShrink: 0,
-          background: 'rgb(var(--surface))',
-          borderRight: '1px solid rgb(var(--border))',
-          display: 'flex',
-          flexDirection: 'column',
-          overflowY: 'auto',
-          // Mobile: fixed drawer
-          position: undefined,
-        }}
-          className="hidden lg:flex"
-        >
-          <SidebarContent />
-        </aside>
-
-        {/* Mobile sidebar drawer */}
-        <aside
-          style={{
-            width: 240,
+        {/* Desktop: always-visible sidebar */}
+        {!isMobile && (
+          <aside style={{
+            width: 200,
+            flexShrink: 0,
             background: 'rgb(var(--surface))',
             borderRight: '1px solid rgb(var(--border))',
             display: 'flex',
             flexDirection: 'column',
             overflowY: 'auto',
-            position: 'fixed',
-            top: 56,
-            left: 0,
-            bottom: 0,
-            zIndex: 45,
-            transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-            transition: 'transform 280ms cubic-bezier(0.4, 0, 0.2, 1)',
-            boxShadow: sidebarOpen ? '4px 0 24px rgba(0,0,0,0.3)' : 'none',
-          }}
-          className="lg:hidden"
-        >
-          <SidebarContent />
-        </aside>
+          }}>
+            <SidebarContent />
+          </aside>
+        )}
+
+        {/* Mobile sidebar drawer */}
+        {isMobile && (
+          <aside
+            style={{
+              width: 260,
+              background: 'rgb(var(--surface))',
+              borderRight: '1px solid rgb(var(--border))',
+              display: 'flex',
+              flexDirection: 'column',
+              overflowY: 'auto',
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              bottom: 0,
+              zIndex: 45,
+              transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+              transition: 'transform 280ms cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: sidebarOpen ? '6px 0 32px rgba(0,0,0,0.4)' : 'none',
+            }}
+          >
+            {/* Mobile drawer header */}
+            <div style={{
+              height: 56,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 12px',
+              borderBottom: '1px solid rgb(var(--border))',
+              flexShrink: 0,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{
+                  width: 30, height: 30, borderRadius: 7,
+                  background: 'linear-gradient(135deg, rgb(var(--brand)), rgb(var(--brand-2)))',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <span style={{ color: '#fff', fontWeight: 800, fontSize: 15, fontFamily: 'var(--font-heading)' }}>A</span>
+                </div>
+                <div>
+                  <div style={{
+                    fontFamily: 'var(--font-heading)', fontSize: 14, fontWeight: 800,
+                    background: 'linear-gradient(135deg, rgb(var(--brand-2)), rgb(var(--brand)))',
+                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                  }}>AVADH11</div>
+                  <div style={{ fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgb(var(--muted))' }}>
+                    {isAdmin ? 'Admin Panel' : isMaster ? 'Master Panel' : 'Broker Panel'}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                style={{
+                  width: 32, height: 32, borderRadius: 7, border: 'none',
+                  background: 'rgb(var(--surface2))', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'rgb(var(--muted))',
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <SidebarContent />
+          </aside>
+        )}
 
         {/* ── MAIN CONTENT ── */}
         <main style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
